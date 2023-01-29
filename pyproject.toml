@@ -1,0 +1,33 @@
+[build-system]
+requires = ["flit_core >= 3.8, < 4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "PAOFLOW-QTpy"
+readme = "README.md"
+requires-python = ">= 3.6"
+license = { file = "LICENSE" }
+dynamic = ["version", "description"]
+authors = [
+    { name = "Anooja Jayaraj", email = "anoojajayaraj@my.unt.edu" },
+    { name = "Marco Buongiorno Nardelli", email = "mbn@unt.edu" },
+]
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "Private :: Do Not Upload"
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "pydantic"
+]
+
+[project.optional-dependencies]
+tester = ["pytest"]
+linter = ["flake9"]
+mypy = ["mypy"]
+formatter = ["yapf", "toml"]
+doc = ["sphinx"]
+
+[project.urls]
+Source = "https://github.com/marcobn/PAOFLOW"
