@@ -1,0 +1,55 @@
+---
+dimC: 20
+transport_dir: 3
+calculation_type: "bulk"
+conduct_formula: "landauer"
+carriers: "electrons"
+ne: 1000
+ne_buffer: 1
+emin: -7.0
+emax: 2.0
+delta: 5.0e-4
+smearing_type: "lorentzian"
+delta_ratio: 5.0e-3
+xmax: 25.0
+bias: 0.0
+nk: [1, 1, 1]
+s: [1, 1, 1]
+use_sym: True
+nprint: 20
+niterx: 200
+nfailx: 5
+transfer_thr: 1e-7
+write_kdata: False
+write_lead_sgm: False
+write_gf: False
+do_eigenchannels: True
+neigchnx: 200000
+do_eigplot: True
+ie_eigplot: 1
+ik_eigplot: 1
+work_dir: "./"
+prefix: " "
+postfix: " "
+#datafile_L: " ./test/datafile_L.dat "
+#datafile_C: " ./test/datafile_C.dat "
+#datafile_R: " ./test/datafile_R.dat "
+#datafile_sgm: " ./test/datafile_sgm.dat "
+#datafile_L_sgm: " ./test/datafile_L_sgm.dat "
+#datafile_C_sgm: " ./test/datafile_C_sgm.dat "
+#datafile_R_sgm: " ./test/datafile_R_sgm.dat "
+fileformat: "atmproj"
+do_orthovp: True
+atmproj_sh: 3.5
+atmproj_thr: 0.9
+atmproj_nbnd: 0.0
+shift_L: 0.0
+shift_C: 0.0
+shift_R: 0.0
+shift_corr: 0.0
+debug_level: 0
+ispin: 0
+surface: False
+efermi_bulk: 0.0
+H00_C: { "cols": "All", "rows": "All" }
+H_CR: { "cols": "All", "rows": "All" }
