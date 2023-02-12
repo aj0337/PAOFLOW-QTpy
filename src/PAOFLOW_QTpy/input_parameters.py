@@ -25,7 +25,7 @@ from yaml import load, SafeLoader
 from mpi4py import MPI
 import numpy as np
 
-from unitconverters import rydcm1, amconv
+from PAOFLOW_QTpy.unitconverters import rydcm1, amconv
 
 from pydantic import (
     NonNegativeFloat,

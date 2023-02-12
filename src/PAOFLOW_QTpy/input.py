@@ -1,4 +1,4 @@
-from input_parameters import ConductorData
+from PAOFLOW_QTpy.input_parameters import ConductorData
 from mpi4py import MPI
 
 
