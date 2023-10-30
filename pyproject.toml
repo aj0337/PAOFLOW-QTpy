@@ -9,19 +9,16 @@ requires-python = ">= 3.6"
 license = { file = "LICENSE" }
 dynamic = ["version", "description"]
 authors = [
-    { name = "Anooja Jayaraj", email = "anoojajayaraj@my.unt.edu" },
     { name = "Marco Buongiorno Nardelli", email = "mbn@unt.edu" },
+    { name = "Anooja Jayaraj", email = "anoojajayaraj@my.unt.edu" },
 ]
-classifiers = [
-    "Operating System :: POSIX :: Linux",
-    "Private :: Do Not Upload"
-]
+classifiers = ["Operating System :: POSIX :: Linux", "Private :: Do Not Upload"]
 dependencies = [
     "numpy",
     "scipy",
     "pydantic",
     "mpi4py >= 3.1.4",
-    "pyyaml ~= 6.0"
+    "pyyaml ~= 6.0",
 ]
 
 [project.optional-dependencies]
