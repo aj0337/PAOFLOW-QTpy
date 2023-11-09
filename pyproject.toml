@@ -31,3 +31,6 @@ dev = ["pre-commit"]
 
 [project.urls]
 Source = "https://github.com/marcobn/PAOFLOW"
+
+[tool.pytest.ini_options]
+addopts = "-v tests/"
