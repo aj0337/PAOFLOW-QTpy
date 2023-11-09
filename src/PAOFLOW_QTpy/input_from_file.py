@@ -20,7 +20,7 @@ def input_from_file(iunit):
             '--input') if '--input' in sys.argv else sys.argv.index('-i')
         input_file = sys.argv[input_flag_index + 1]
 
-        return open(input_file, 'r')
+        return open(input_file)
     except (ValueError, FileNotFoundError, IndexError):
         print("Error: Input file not found or invalid command line arguments.")
         return None

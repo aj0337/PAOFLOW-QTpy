@@ -8,8 +8,8 @@
 
 #     return input_dict
 
-#comm = MPI.COMM_WORLD
-#input_dict = input_manager('test.yaml', comm)
+# comm = MPI.COMM_WORLD
+# input_dict = input_manager('test.yaml', comm)
 
 
 def input_from_file(stdin):
@@ -58,8 +58,8 @@ def setup_correlation():
 
 
 def input_manager():
-    input_from_file(stdin)
-    read_namelist_input_conductor(stdin)
+    # input_from_file(stdin)
+    # read_namelist_input_conductor(stdin)
     setup_control()
     setup_io()
     setup_egrid()

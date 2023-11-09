@@ -22,7 +22,7 @@ def define_xgrid(xmax, delta_ratio):
     return xgrid
 
 
-#TESTED define_xgrid outputs match
+# TESTED define_xgrid outputs match
 
 
 def define_fft_grid(xmax, delta_ratio):
@@ -36,7 +36,7 @@ def define_fft_grid(xmax, delta_ratio):
     return nfft, fft_grid
 
 
-#TESTED  define_fft_grid nfft values don't match because the fortran version
+# TESTED  define_fft_grid nfft values don't match because the fortran version
 # does an additional good fft dimension calculation that is not done in the
 # python version. Consequnetly, since fft_grid uses this nfft value,
 # fft_grids don't match in the python vs fortran version. However the grids in
@@ -49,6 +49,7 @@ def gaussian(x, delta):
 
 def metpax(x, delta):
     from math import factorial
+
     from numpy.polynomial.hermite import hermval
     nh = 5
     coeff = np.zeros(2 * nh)
