@@ -28,6 +28,7 @@ linter = ["flake9"]
 mypy = ["mypy"]
 formatter = ["yapf", "toml"]
 doc = ["sphinx"]
+dev = ["pre-commit"]
 
 [project.urls]
 Source = "https://github.com/marcobn/PAOFLOW"
