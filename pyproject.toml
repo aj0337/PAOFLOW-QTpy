@@ -13,21 +13,11 @@ authors = [
     { name = "Anooja Jayaraj", email = "anoojajayaraj@my.unt.edu" },
 ]
 classifiers = ["Operating System :: POSIX :: Linux", "Private :: Do Not Upload"]
-dependencies = [
-    "numpy",
-    "scipy",
-    "pydantic",
-    "mpi4py >= 3.1.4",
-    "pyyaml ~= 6.0",
-]
+dependencies = ["numpy", "scipy", "pydantic", "mpi4py", "pyyaml"]
 
 [project.optional-dependencies]
-tester = ["pytest"]
-linter = ["flake9"]
-mypy = ["mypy"]
-formatter = ["yapf", "toml"]
+test = ["pytest"]
 doc = ["sphinx"]
-dev = ["pre-commit"]
 
 [project.urls]
 Source = "https://github.com/marcobn/PAOFLOW"
