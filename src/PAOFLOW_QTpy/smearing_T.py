@@ -1,106 +1,92 @@
 import numpy as np
+import scipy.signal as sp
+from scipy.fft import fft, ifft
+from smearing_base import (fermidirac, gaussian, lorentzian, marzarivanderbilt,
+                           metpax)
 
 
-def smearing_init(smearing_type, x, delta):
+def smearing_func(x, smearing_type):
     if smearing_type == 'gaussian':
-        gaussian(x, delta)
-    if smearing_type == 'methfessel-paxton' or 'mp':
-        metpax(x, delta)
-    if smearing_type == 'marzari-vanderbilt' or 'mv':
-        marzarivanderbilt(x, delta)
-    if smearing_type == 'fermi-dirac' or 'fd':
-        fermidirac(x, delta)
-    if smearing_type == 'lorentzian':
-        lorentzian(x, delta)
+        gaussian(x)
+    elif smearing_type == 'methfessel-paxton' or 'mp':
+        metpax(x)
+    elif smearing_type == 'marzari-vanderbilt' or 'mv':
+        marzarivanderbilt(x)
+    elif smearing_type == 'fermi-dirac' or 'fd':
+        fermidirac(x)
+    elif smearing_type == 'lorentzian':
+        lorentzian(x)
 
 
-def define_xgrid(xmax, delta_ratio):
+def good_fft_order_1dz(nfft):
+    raise NotImplementedError
+
+
+def smearing_init(xmax, delta, delta_ratio, smearing_type):
+    """
+    Initialize the smearing function.
+
+    Args:
+        xmax (float): Maximum value of the spatial grid.
+        delta_ratio (float): Ratio of the smearing width to the spatial grid spacing.
+        smearing_type (str): Type of smearing function (e.g., "gaussian", "exponential").
+
+    Returns:
+        g_smear (numpy.ndarray): Smearing function.
+    """
+
+    if delta_ratio < 0:
+        raise ValueError("delta_ratio must be non-negative")
+    if delta_ratio > 1:
+        raise ValueError("delta_ratio must be less than or equal to 1")
+
     nx = 2 * int(2 * xmax / delta_ratio)
-    dx = 2 * xmax / np.real(nx)
-    nxindex = np.arange(0, nx, 1, dtype=int)
-    xgrid = -np.real(nx / 2) * dx + nxindex * dx
-    return xgrid
+    dx = 2 * xmax / nx
 
+    xgrid = np.linspace(-xmax, xmax, nx)
 
-# TESTED define_xgrid outputs match
-
-
-def define_fft_grid(xmax, delta_ratio):
-    nx = 2 * int(2 * xmax / delta_ratio)
-    dx = 2 * xmax / np.real(nx)
-    eps_sx = 15.0
+    eps_sx = 15.0  # Half of the width of the smearing function
+    eps_px = xmax + eps_sx
     Tmax = xmax + 2 * eps_sx
     nfft = 1 + int((Tmax / xmax) * nx)
-    nfftindex = np.arange(0, nfft, 1, dtype=int)
-    fft_grid = -np.real(nfft / 2) * dx + nfftindex * dx
-    return nfft, fft_grid
+    # nfft = sp.good_size(nfft)
 
+    fft_grid = np.linspace(-xmax, xmax, nfft)
 
-# TESTED  define_fft_grid nfft values don't match because the fortran version
-# does an additional good fft dimension calculation that is not done in the
-# python version. Consequnetly, since fft_grid uses this nfft value,
-# fft_grids don't match in the python vs fortran version. However the grids in
-# both versions are equally spaced by 0.0025 eV in test01.
+    is_start = np.searchsorted(fft_grid, -eps_sx)
+    is_end = np.searchsorted(fft_grid, eps_sx)
+    ip_start = np.searchsorted(fft_grid, -eps_px)
+    ip_end = np.searchsorted(fft_grid, eps_px)
 
+    auxs_in = np.zeros(nfft, dtype=complex)
+    auxs_out = np.zeros(nfft, dtype=complex)
 
-def gaussian(x, delta):
-    return (np.exp(-((x) / delta)**2) / delta) / np.sqrt(np.pi)
+    cost = 1 / delta
 
+    auxs_in[is_start:is_end] = cost * smearing_func(xgrid[is_start:is_end],
+                                                    smearing_type)
 
-def metpax(x, delta):
-    from math import factorial
+    auxp_in = np.zeros(nfft, dtype=complex)
+    auxp_out = np.zeros(nfft, dtype=complex)
 
-    from numpy.polynomial.hermite import hermval
-    nh = 5
-    coeff = np.zeros(2 * nh)
-    coeff[0] = 1.
-    for n in range(2, 2 * nh, 2):
-        m = n // 2
-        coeff[n] = (-1.)**m / (factorial(m) * (4.0**m) * np.sqrt(np.pi))
-    return hermval(x / delta,
-                   coeff) * np.exp(-(x / delta)**2) / (delta * np.sqrt(np.pi))
+    cost = 1
 
+    auxp_in[ip_start:ip_end] = cost / (xgrid[ip_start:ip_end] +
+                                       1j * delta_ratio)
 
-def marzarivanderbilt(x, delta):
-    return np.exp(-(x - 1 / (np.sqrt(2)))**2) * (2.0 - np.sqrt(2) * x) / (
-        delta * np.sqrt(np.pi))
+    wrapped = np.roll(auxs_in, -is_start)
+    auxs_in = wrapped
 
+    auxs_out = fft(auxs_in)
+    auxp_out = fft(auxp_in)
 
-def fermidirac(x, delta):
-    return 1 / (delta * (1 + np.cosh(x)))
+    cost = 2 * Tmax
+    auxp_out *= cost * auxs_out
 
+    auxp_in = ifft(auxp_out)
 
-def lorentzian(x, delta):
-    return 1 / (delta * (1 + x**2))
+    ix_start = np.searchsorted(fft_grid, -xmax)
+    ix_end = ix_start + nx - 1
+    g_smear = np.real(auxp_in[ix_start:ix_end])
 
-
-def define_input_pole(xmax, delta_ratio):
-    from locate import locate_extrema
-
-    eps_sx = 15.0
-    eps_px = xmax + eps_sx
-    nfft, fft_grid = define_fft_grid(xmax, delta_ratio)
-    is_start = locate_extrema(nfft, fft_grid, -eps_px)
-    is_end = locate_extrema(nfft, fft_grid, eps_px)
-    auxp_in = 1 / (fft_grid[is_start:is_end] + 1j * delta_ratio)
-    return auxp_in
-
-
-def define_complex_fft_smear(xmax, delta_ratio):
-    from locate import locate_extrema
-
-    nfft, fft_grid = define_fft_grid(xmax, delta_ratio)
-    is_extrema = locate_extrema(nfft, fft_grid, 0)
-    if is_extrema < 0:
-        is_extrema = is_extrema + 1
-    return None
-
-
-if __name__ == "__main__":
-    from input import input_manager
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    input_dict = input_manager('test.yaml', comm)
-    xmax = input_dict['xmax']
-    delta_ratio = input_dict['delta_ratio']
-    define_fft_grid(xmax, delta_ratio)
+    return g_smear

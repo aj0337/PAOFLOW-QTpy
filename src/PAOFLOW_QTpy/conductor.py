@@ -9,12 +9,13 @@ def input_manager():
     pass
 
 
+
 def write_header(output, message):
     pass
 
-
 def t_datafiles_init():
-    pass
+    raise NotImplementedError
+    '''Finished till here, start from smearing_init'''
 
 
 def smearing_init():
