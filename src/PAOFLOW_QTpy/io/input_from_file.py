@@ -16,8 +16,9 @@ def input_from_file(iunit):
     """
     try:
         # Look for the '--input' or '-i' flag followed by the input file name
-        input_flag_index = sys.argv.index(
-            '--input') if '--input' in sys.argv else sys.argv.index('-i')
+        input_flag_index = (
+            sys.argv.index("--input") if "--input" in sys.argv else sys.argv.index("-i")
+        )
         input_file = sys.argv[input_flag_index + 1]
 
         return open(input_file)

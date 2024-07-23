@@ -2,7 +2,7 @@ import sys
 from io import StringIO
 from mpi4py import MPI
 
-from PAOFLOW_QTpy.startup import startup
+from PAOFLOW_QTpy.io.startup import startup
 
 
 def test_startup():
