@@ -9,7 +9,7 @@ def write_header(msg):
     if len(msg) >= 66:
         raise ValueError(f"message longer than 66 characters: {msg}")
 
-    separator = '=' * 70
+    separator = "=" * 70
 
     print(f"  {separator}")
     print(f"  =  {msg:^66s}=")

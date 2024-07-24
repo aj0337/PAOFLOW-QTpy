@@ -45,7 +45,9 @@ def log_push(name):
 
     # Format the log entry
     log_entry = (
-        f"{cdate} {ctime} | {memory} KB | " + "..| " * (stack_index - 1) + stack[stack_index]
+        f"{cdate} {ctime} | {memory} KB | "
+        + "..| " * (stack_index - 1)
+        + stack[stack_index]
     )
 
     # Write to the log file
