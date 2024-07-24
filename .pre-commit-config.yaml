@@ -16,47 +16,14 @@ repos:
         args: ["--py37-plus"]
 
   - repo: https://github.com/ikamensh/flynt/
-    rev: "0.76"
+    rev: "1.0.1"
     hooks:
       - id: flynt
+        args: [--line-length=120, --fail-on-change]
 
-  - repo: https://github.com/PyCQA/isort
-    rev: "5.12.0"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
     hooks:
-      - id: isort
-
-  - repo: https://github.com/pre-commit/mirrors-yapf
-    rev: v0.32.0
-    hooks:
-      - id: yapf
-        name: yapf
-        types: [python]
-        args: ["-i"]
-        exclude: &exclude_files >
-          (?x)^(
-            docs/.*|
-            tests/.*(?<!\.py)$
-          )$
-        additional_dependencies: ["toml"]
-
-  - repo: https://github.com/executablebooks/mdformat
-    rev: "0.7.16"
-    hooks:
-      - id: mdformat
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: "6.0.0"
-    hooks:
-      - id: flake8
-        # E501 - line length limit
-        # E741 - ambiguous variable name, used sparsely when appropriate
-        # F541 - f-string is missing placeholders
-        args: ["--ignore=E501,E741,F541"]
-        exclude: *exclude_files
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.2.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-PyYAML]
-        exclude: *exclude_files
+      - id: ruff-format
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix, --show-fixes]
