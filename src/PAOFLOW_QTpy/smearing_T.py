@@ -32,6 +32,24 @@ def initialize_smearing_grid(
         Energy grid points.
     `g_smear` : np.ndarray
         Smeared Green's function values over the grid.
+
+    Notes
+    -----
+    This function constructs a numerically smeared Green's function `g_smear(x)`
+    over an energy grid `xgrid` using FFT-based convolution:
+
+        g_smear(x) = [1 / (x + i·δ_ratio)] ⋆ f_smear(x / δ)
+
+    where:
+    - `f_smear` is the chosen smearing function (e.g. Lorentzian, Gaussian)
+    - `⋆` denotes convolution (implemented via FFT)
+    - `delta` determines the width of the smearing function
+    - `delta_ratio` controls the pole width for the convolution kernel
+    - The final result is stored on an energy grid `xgrid ∈ [−xmax, xmax]`
+
+    This is used only in the `'numerical'` smearing mode for computing
+    Green's functions.
+
     """
     nx = int(2 * (2 * xmax / delta_ratio))
     dx = (2 * xmax) / nx
