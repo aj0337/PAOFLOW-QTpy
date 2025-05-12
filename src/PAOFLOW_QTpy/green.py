@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 
 import numpy as np
+from gzero_maker import compute_non_interacting_gf
 from transfer import compute_surface_transfer_matrices
 
 
@@ -167,73 +168,78 @@ def compute_conductor_green_function(
     h_c: np.ndarray,
     s_c: np.ndarray,
     sigma_l: np.ndarray,
-    sigma_r: np.ndarray,
-    surface: bool = False,
+    sigma_r: Optional[np.ndarray] = None,
     smearing_type: str = "lorentzian",
     delta: float = 1e-5,
     delta_ratio: float = 5e-3,
     g_smear: Optional[np.ndarray] = None,
     xgrid: Optional[np.ndarray] = None,
+    calc: Literal["inverse", "direct"] = "inverse",
+    surface: bool = False,
 ) -> np.ndarray:
     """
-    Construct the full conductor Green's function with lead self-energies included.
+    Construct the retarded Green's function for the conductor region.
 
     Parameters
     ----------
     `energy` : float
         Real energy value to evaluate the Green's function.
     `h_c` : np.ndarray
-        Hamiltonian of the central conductor region (dim x dim).
+        Hamiltonian of the conductor region.
     `s_c` : np.ndarray
-        Overlap matrix of the conductor region (dim x dim).
+        Overlap matrix of the conductor region.
     `sigma_l` : np.ndarray
-        Self-energy matrix from the left lead (dim x dim).
-    `sigma_r` : np.ndarray
-        Self-energy matrix from the right lead (dim x dim).
-    `surface` : bool
-        If True, exclude the right self-energy (projected surface Green's function).
+        Self-energy from the left lead.
+    `sigma_r` : np.ndarray, optional
+        Self-energy from the right lead. Not used if `surface=True`.
     `smearing_type` : str
         Smearing method: 'lorentzian', 'none', or 'numerical'.
     `delta` : float
-        Smearing parameter for imaginary broadening.
+        Imaginary broadening parameter.
     `delta_ratio` : float
-        Used for 'none' smearing: `delta_eff = delta * delta_ratio`.
+        Delta scaling used for 'none' smearing.
     `g_smear` : np.ndarray, optional
-        Precomputed smeared Green’s function values (only for numerical smearing).
+        Precomputed smeared Green’s function values on `xgrid` (for numerical smearing).
     `xgrid` : np.ndarray, optional
         Energy grid corresponding to `g_smear`.
+    `calc` : {'direct', 'inverse'}
+        Whether to compute G or G⁻¹ for subtraction.
+    `surface` : bool
+        Whether to compute projected surface bandstructure using only left lead.
 
     Returns
     -------
     `g_c` : np.ndarray
-        Green's function of the conductor region (dim x dim).
+        Green's function of the conductor region.
 
     Notes
     -----
-    Evaluates the full retarded Green's function:
+    Computes:
 
-        G_C(E) = [E·S - H - Σ_L - Σ_R]⁻¹     (if surface is False)
-        G_C(E) = [E·S - H - Σ_L]⁻¹          (if surface is True)
+        G_C = [ ω·S_C − H_C − Σ_L − Σ_R ]⁻¹
 
-    using smearing to regularize the inversion.
+    or for surface projection:
+
+        G_C = [ ω·S_C − H_C − Σ_L ]⁻¹
     """
-    from gzero_maker import compute_non_interacting_gf
 
-    sigma_total = sigma_l if surface else sigma_l + sigma_r
+    g0inv = compute_non_interacting_gf(
+        energy,
+        h=h_c,
+        s=s_c,
+        smearing_type=smearing_type,
+        delta=delta,
+        delta_ratio=delta_ratio,
+        g_smear=g_smear,
+        xgrid=xgrid,
+        calc=calc,
+    )
 
-    try:
-        g_c = compute_non_interacting_gf(
-            energy,
-            h_c + sigma_total,
-            s_c,
-            smearing_type=smearing_type,
-            delta=delta,
-            delta_ratio=delta_ratio,
-            g_smear=g_smear,
-            xgrid=xgrid,
-            calc="direct",
-        )
-    except np.linalg.LinAlgError as e:
-        raise RuntimeError("Failed to invert conductor Green's function matrix.") from e
+    if surface:
+        g0inv -= sigma_l
+    else:
+        if sigma_r is None:
+            raise ValueError("Right self-energy must be provided unless surface=True.")
+        g0inv -= sigma_l + sigma_r
 
-    return g_c
+    return np.linalg.inv(g0inv)
