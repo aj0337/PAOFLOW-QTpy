@@ -21,6 +21,15 @@ src/
 | `smearing_init` | `initialize_smearing_grid` | Translated | FFT-based construction of xgrid and g_smear for numerical smearing |
 | `input_parameters.f90` | Pass default values explicitly to functions | Removed | It would be cleaner to implement a `TransportConfig` dataclass that is passed to various functions. However, I think this would make the functions less readable and the docstrings not as explicit |
 | `transmittance` | `evaluate_transmittance` | Translated | Supports Fisher-Lee and generalized formula. Uses `scipy.linalg.solve` instead of matrix inversion for numerical stability. Implements eigenchannel decomposition and eigenvector output for plotting when requested. |
+| `operator_blc` (type and related procedures) | `OperatorBlock` (class) | Translated | Encapsulates Hamiltonian, overlap, and self-energy blocks for transport calculations. Handles allocation, cleanup, copying, memory usage, and diagnostics. |
+| `operator_blc_init` | `__init__` | Translated | Initializes all metadata and allocates nothing. Ensures all internal structures are in a clean, unallocated state. |
+| `operator_blc_allocate` | `allocate()` | Translated | Allocates internal arrays (Hamiltonian, overlap, auxiliary matrices, etc.) based on provided dimensions and flags. Validates dimensions and sets internal state. |
+| `operator_blc_deallocate` | `deallocate()` | Translated | Frees allocated arrays and resets metadata. Ensures clean object reuse or destruction. |
+| `operator_blc_copy` | `copy_from(other)` | Translated | Copies allocation and content from another `OperatorBlock`. Raises error if source is unallocated. |
+| `operator_blc_update` | `update(...)` | Translated | Updates metadata like energy index, k-point index, or dynamic correlation flag. Intended for runtime state tracking. |
+| `operator_blc_memusage` | `memory_usage(memtype)` | Translated | Computes memory usage (in MB) for Hamiltonian or correlation data stored in the object. |
+| `operator_blc_write` | `summary(unit=sys.stdout)`| Translated | Prints a summary of the block's current state and metadata. Useful for debugging and diagnostics. |
+
 baselib/util.f90
 
 | Fortran Routine | Purpose                                  | Python Equivalent                | Status                |
