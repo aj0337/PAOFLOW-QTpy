@@ -33,6 +33,10 @@ src/
 | `hamiltonian_allocate` | `HamiltonianSystem.allocate` | Translated | Initializes each `OperatorBlock` (blc_00L, blc_01L, etc.) and computes `dimx`, `dimx_lead`. Uses internal validation to ensure proper dimension setup. |
 | `hamiltonian_deallocate` | `HamiltonianSystem.deallocate` | Translated | Deallocates each block and resets the allocation flag. All internal memory-managed structures are cleared. |
 | `hamiltonian_memusage` | `HamiltonianSystem.memusage` | Translated | Returns total memory usage (in MB) across all allocated blocks by summing the usage reported by each `OperatorBlock`. |
+| `operator_read_aux` | `read_operator_aux` | Placeholder | Pending IOTK XML file structure example for implementation. |
+| `operator_read_data` | `read_operator_data` | Placeholder | Same as above. Assumes XML layout with <OPR1>, <VR1> tags etc. |
+| `operator_write_aux` | `write_operator_aux` | Placeholder | Pending structure of energy grid and IVR/VR blocks. |
+| `operator_write_data` | `write_operator_data` | Placeholder | Will need to write 3D complex arrays in XML blocks per IOTK. |
 
 baselib/util.f90
 
