@@ -37,6 +37,7 @@ src/
 | `operator_read_data` | `read_operator_data` | Placeholder | Same as above. Assumes XML layout with <OPR1>, <VR1> tags etc. |
 | `operator_write_aux` | `write_operator_aux` | Placeholder | Pending structure of energy grid and IVR/VR blocks. |
 | `operator_write_data` | `write_operator_data` | Placeholder | Will need to write 3D complex arrays in XML blocks per IOTK. |
+| `fourier_par` | `fourier_transform_real_to_kspace` | Translated | Performs a 2D Fourier transform from real-space matrices `rh[i,j,R]` to reciprocal space matrices `kh[i,j,k]` using weights `wr[R]` and phase factors `table[R,k]`. Vectorized with NumPy for performance and clarity. |
 
 baselib/util.f90
 
