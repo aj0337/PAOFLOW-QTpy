@@ -37,8 +37,9 @@ src/
 | `operator_read_data` | `read_operator_data` | Placeholder | Same as above. Assumes XML layout with <OPR1>, <VR1> tags etc. |
 | `operator_write_aux` | `write_operator_aux` | Placeholder | Pending structure of energy grid and IVR/VR blocks. |
 | `operator_write_data` | `write_operator_data` | Placeholder | Will need to write 3D complex arrays in XML blocks per IOTK. |
-| `fourier_par` | `fourier_transform_real_to_kspace` | Translated | Performs a 2D Fourier transform from real-space matrices `rh[i,j,R]` to reciprocal space matrices `kh[i,j,k]` using weights `wr[R]` and phase factors `table[R,k]`. Vectorized with NumPy for performance and clarity. |
-
+| `fourier_par` | `fourier_transform_real_to_kspace` | Translated | Performs a 2D Fourier transform from real-space matrices `rh[i,j,R]` to reciprocal space matrices `kh[i,j,k]` using weights `wr[R]` and phase factors `table[R,k]`. Vectorized with NumPy for performance and clarity. |\*_\*\*
+| `hamiltonian_setup` | `hamiltonian_setup` | Translated | Initializes the auxiliary matrices `aux` as `(E - shift) _ S - H - Σ`for each allocated Hamiltonian block at a given energy and k-point. Supports optional correlation self-energies and correction shift for the central region. |
+|`transfer_mtrx + green + mat_mul`|`build_self_energies_from_blocks` | Added | Encapsulates transfer matrix construction and Green's function inversion into a reusable, general-purpose self-energy builder. |
 baselib/util.f90
 
 | Fortran Routine | Purpose                                  | Python Equivalent                | Status                |
