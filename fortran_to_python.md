@@ -29,6 +29,10 @@ src/
 | `operator_blc_update` | `update(...)` | Translated | Updates metadata like energy index, k-point index, or dynamic correlation flag. Intended for runtime state tracking. |
 | `operator_blc_memusage` | `memory_usage(memtype)` | Translated | Computes memory usage (in MB) for Hamiltonian or correlation data stored in the object. |
 | `operator_blc_write` | `summary(unit=sys.stdout)`| Translated | Prints a summary of the block's current state and metadata. Useful for debugging and diagnostics. |
+| `T_hamiltonian_module` | `HamiltonianSystem` | Translated | Encapsulates dimensions, shifts, and all Hamiltonian-related blocks (`blc_00L`, `blc_01L`, etc.) as attributes. Replaces global state with an object-oriented structure for clarity and maintainability. |
+| `hamiltonian_allocate` | `HamiltonianSystem.allocate` | Translated | Initializes each `OperatorBlock` (blc_00L, blc_01L, etc.) and computes `dimx`, `dimx_lead`. Uses internal validation to ensure proper dimension setup. |
+| `hamiltonian_deallocate` | `HamiltonianSystem.deallocate` | Translated | Deallocates each block and resets the allocation flag. All internal memory-managed structures are cleared. |
+| `hamiltonian_memusage` | `HamiltonianSystem.memusage` | Translated | Returns total memory usage (in MB) across all allocated blocks by summing the usage reported by each `OperatorBlock`. |
 
 baselib/util.f90
 
