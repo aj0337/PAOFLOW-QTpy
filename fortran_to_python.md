@@ -53,6 +53,70 @@ baselib/util.f90
 | `mat_sv`        | Solving linear systems `A x = b`         | `inv(...) @ ...` or `solve(...)` | Covered (via `solve`) |
 | `mat_hdiag`     | Hermitian matrix diagonalization         | `numpy.linalg.eigh(...)`         | Covered               |
 
+## Parsing
+
+### QE XML Parsing Correspondence: Fortran vs Python
+
+This section maps how QE XML tags are parsed in the Fortran module `qexml.f90` versus how they are handled in the Python-based parser (`parse_data_file` and `parse_atomic_proj_xml`).
+
+---
+
+### 🧭 Overview: QE XML Parsing Layers
+
+| Data Type / Section        | XML Tag                      | Fortran (qexml.f90)                          | Python Function               | Notes                                                               |
+| -------------------------- | ---------------------------- | -------------------------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| Lattice parameter          | `LATTICE_PARAMETER`          | `qexml_read_cell`                            | `parse_data_file()`           | Value stored in `alat`                                              |
+| Direct lattice vectors     | `DIRECT_LATTICE_VECTORS`     | `qexml_read_cell`                            | `parse_data_file()`           | Tags: `a1`, `a2`, `a3`                                              |
+| Reciprocal lattice vectors | `RECIPROCAL_LATTICE_VECTORS` | `qexml_read_cell`                            | `parse_data_file()`           | Tags: `b1`, `b2`, `b3`                                              |
+| Atomic positions           | `IONS`                       | `qexml_read_ions`                            | `parse_data_file()`           | Each atom has tag `ATOM`, child `TAU` and attributes like `SPECIES` |
+| K-points                   | `K-POINTS`                   | `qexml_read_bz`                              | `parse_atomic_proj_xml()`     | Stored as `kpts`                                                    |
+| K-point weights            | `WEIGHT_OF_K-POINTS`         | `qexml_read_bz`                              | `parse_atomic_proj_xml()`     | Stored as `wk`                                                      |
+| Eigenvalues                | `EIGENVALUES` → `<EIG>`      | `qexml_read_bands`                           | `parse_atomic_proj_xml()`     | Stored as `eigvals`                                                 |
+| Fermi energy               | `FERMI_ENERGY`               | `qexml_read_bands_info`                      | `parse_atomic_proj_xml()`     | Stored as `efermi`                                                  |
+| Projections                | `PROJECTIONS`                | (Not shown in detail, implied in `read_wfc`) | `parse_atomic_proj_xml()`     | Used to build `proj[:, ib, ik, isp]`                                |
+| Overlaps (optional)        | `OVERLAPS`                   | (Not shown in detail, implied in `read_wfc`) | `parse_atomic_proj_xml()`     | Optional, stored as `overlap`                                       |
+| Units                      | e.g. `UNITS_FOR_ENERGIES`    | `iotk_scan_attr(...)`                        | Python uses `attrib['UNITS']` | Handled via attribute access in both                                |
+
+---
+
+### 🔄 One-to-One Tag/Field Mapping
+
+#### From `parse_data_file` (Python)
+
+| XML Element                            | Python Variable  | Fortran Subroutine | Fortran Variable |
+| -------------------------------------- | ---------------- | ------------------ | ---------------- |
+| `CELL/LATTICE_PARAMETER` (attr `alat`) | `alat`           | `qexml_read_cell`  | `alat`           |
+| `CELL/A1`, `A2`, `A3`                  | `a1`, `a2`, `a3` | `qexml_read_cell`  | `a1`, `a2`, `a3` |
+| `CELL/B1`, `B2`, `B3`                  | `b1`, `b2`, `b3` | `qexml_read_cell`  | `b1`, `b2`, `b3` |
+| `IONS/ATOM`                            | `tau[:, i]`      | `qexml_read_ions`  | `tau(:, i)`      |
+| `IONS/ATOM/@SPECIES`                   | `atm_symb[i]`    | `qexml_read_ions`  | `atm(i)`         |
+| `IONS/ATOM/@ITYP`                      | `ityp[i]`        | `qexml_read_ions`  | `ityp(i)`        |
+
+#### From `parse_atomic_proj_xml` (Python)
+
+| XML Element                        | Python Variable          | Fortran Subroutine           | Fortran Variable         |
+| ---------------------------------- | ------------------------ | ---------------------------- | ------------------------ |
+| `HEADER/NUMBER_OF_BANDS`           | `nbnd`                   | `qexml_read_bands_info`      | `nbnd`                   |
+| `HEADER/NUMBER_OF_K-POINTS`        | `nkpts`                  | `qexml_read_bands_info`      | `num_k_points`           |
+| `HEADER/NUMBER_OF_SPIN_COMPONENTS` | `nspin`                  | `qexml_read_bands_info`      | `nspin`                  |
+| `HEADER/NUMBER_OF_ATOMIC_WFC`      | `natomwfc`               | `qexml_read_bands_info`      | `natomwfc`               |
+| `HEADER/FERMI_ENERGY`              | `efermi`                 | `qexml_read_bands_info`      | `ef`                     |
+| `HEADER/UNITS_FOR_ENERGY/@UNITS`   | `energy_units`           | `qexml_read_bands_info`      | `energy_units`           |
+| `K-POINTS`                         | `kpts`                   | `qexml_read_bz`              | `xk`                     |
+| `WEIGHT_OF_K-POINTS`               | `wk`                     | `qexml_read_bz`              | `wk`                     |
+| `EIGENVALUES/EIG`                  | `eigvals`                | `qexml_read_bands`           | `eig`                    |
+| `PROJECTIONS/SPIN.../ATMWFC...`    | `proj[ia, ib, ik, isp]`  | implicit in `qexml_read_wfc` | `evc` projection vectors |
+| `OVERLAPS/OVERLAP...`              | `overlap[:, :, ik, isp]` | optional in Fortran          | `overlap` matrices       |
+
+---
+
+### 🧾 Namespace Notes
+
+- **Python**: XML namespace resolution is done using:
+  ```python
+  ns = {"qes": "http://www.quantum-espresso.org/ns/qes"}
+  ```
+
 ## 📌 Additional Notes
 
 - Global variables from Fortran modules are being passed explicitly in Python.
