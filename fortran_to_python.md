@@ -49,7 +49,8 @@ src/
 | (new in Python) | `parse_atomic_proj_xml` | New | Parses eigenvalues, k-points, projectors, and overlaps from`atomic_proj.xml`. |
 | (new in Python) | `build_hamiltonian_from_proj`| New | Constructs the k-dependent Hamiltonian from eigenvalues and projectors. Optionally uses overlaps for non-orthogonal projectors. |
 | (new in Python) |`write_internal_format_files`| New | Writes`.ham`XML output in internal PAOFLOW format for debugging. Encodes lattice, weights, and Hamiltonian blocks in real space. |
-|`grids_get_rgrid`|`grids_get_rgrid`| Translated | Generates the real-space R-vector grid in crystal coordinates and assigns normalized weights. Ensures time-reversal symmetry by explicitly including`-R` points and halving corresponding weights when necessary. Returns total number of R-points, R-vectors, and weights. |
+|`grids_get_rgrid`|`grids_get_rgrid`| Translated | Generates the real-space R-vector grid in crystal coordinates and assigns normalized weights. Ensures time-reversal symmetry by explicitly including`-R`points and halving corresponding weights when necessary. Returns total number of R-points, R-vectors, and weights. |
+|`compute_rham`             |`compute_rham`    | Translated               | Computes real-space Hamiltonian block`H(R)`via inverse Fourier transform from reciprocal-space`H(k)`using`H(R) = ∑_k w_k · exp(-i k · R) · H(k)`. Ensures `k · R`is dimensionless by requiring both`k`and`R` in Cartesian coordinates. |
 
 baselib/util.f90
 
