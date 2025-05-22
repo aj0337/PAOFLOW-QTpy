@@ -30,7 +30,7 @@ src/
 | `operator_blc_memusage` | `memory_usage(memtype)` | Translated | Computes memory usage (in MB) for Hamiltonian or correlation data stored in the object. |
 | `operator_blc_write` | `summary(unit=sys.stdout)`| Translated | Prints a summary of the block's current state and metadata. Useful for debugging and diagnostics. |
 | `T_hamiltonian_module` | `HamiltonianSystem` | Translated | Encapsulates dimensions, shifts, and all Hamiltonian-related blocks (`blc_00L`, `blc_01L`, etc.) as attributes. Replaces global state with an object-oriented structure for clarity and maintainability. |
-| `hamiltonian_allocate` | `HamiltonianSystem.allocate` | Translated | Initializes each `OperatorBlock` (blc_00L, blc_01L, etc.) and computes `dimx`, `dimx_lead`. Uses internal validation to ensure proper dimension setup. |
+| `hamiltonian_allocate` | `HamiltonianSystem.allocate` | Translated | Initializes each `OperatorBlock` (blc*00L, blc_01L, etc.) and computes `dimx`, `dimx_lead`. Uses internal validation to ensure proper dimension setup. |
 | `hamiltonian_deallocate` | `HamiltonianSystem.deallocate` | Translated | Deallocates each block and resets the allocation flag. All internal memory-managed structures are cleared. |
 | `hamiltonian_memusage` | `HamiltonianSystem.memusage` | Translated | Returns total memory usage (in MB) across all allocated blocks by summing the usage reported by each `OperatorBlock`. |
 | `operator_read_aux` | `read_operator_aux` | Placeholder | Pending IOTK XML file structure example for implementation. |
@@ -45,10 +45,11 @@ src/
 | `T_kpoints_module` |`kpoints.py` | Translated | Contains logic for generating 2D k-point mesh orthogonal to transport direction, applying symmetry reduction, converting to 3D, and computing phase factors for Fourier transforms. Includes`initialize_kpoints`, `kpoints_rmask`, `kpoints_equivalent`, and `compute_fourier_phase_table`. |
 | `wd_write_eigchn` |`write_eigenchannels` | Translated | Writes eigenchannel vectors`z_eigplot`to`.npz`format with metadata including`ie`, `ik`, `vkpt`, and `transport_dir`. Handles safe file output and logs location. |
 | `atmproj_tools`| `parse_atomic_proj` | Translated | Top-level function that orchestrates parsing of`data-file.xml`and`atomic_proj.xml`, builds H(k), and optionally writes `.ham`and`.space`. |
-| _(new in Python)_ | `parse_data_file` | New | Extracts lattice vectors, reciprocal vectors, and atomic positions/types from`data-file.xml`. |
-| _(new in Python)_ | `parse_atomic_proj_xml` | New | Parses eigenvalues, k-points, projectors, and overlaps from`atomic_proj.xml`. |
-| _(new in Python)_ | `build_hamiltonian_from_proj`| New | Constructs the k-dependent Hamiltonian from eigenvalues and projectors. Optionally uses overlaps for non-orthogonal projectors. |
-| _(new in Python)_ |`write_internal_format_files`| New | Writes`.ham` XML output in internal PAOFLOW format for debugging. Encodes lattice, weights, and Hamiltonian blocks in real space. |
+| (new in Python) | `parse_data_file` | New | Extracts lattice vectors, reciprocal vectors, and atomic positions/types from`data-file.xml`. |
+| (new in Python) | `parse_atomic_proj_xml` | New | Parses eigenvalues, k-points, projectors, and overlaps from`atomic_proj.xml`. |
+| (new in Python) | `build_hamiltonian_from_proj`| New | Constructs the k-dependent Hamiltonian from eigenvalues and projectors. Optionally uses overlaps for non-orthogonal projectors. |
+| (new in Python) |`write_internal_format_files`| New | Writes`.ham`XML output in internal PAOFLOW format for debugging. Encodes lattice, weights, and Hamiltonian blocks in real space. |
+|`grids_get_rgrid`|`grids_get_rgrid`| Translated | Generates the real-space R-vector grid in crystal coordinates and assigns normalized weights. Ensures time-reversal symmetry by explicitly including`-R` points and halving corresponding weights when necessary. Returns total number of R-points, R-vectors, and weights. |
 
 baselib/util.f90
 
