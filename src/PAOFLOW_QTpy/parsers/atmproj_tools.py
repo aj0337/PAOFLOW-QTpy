@@ -1,6 +1,9 @@
 import os
 import numpy as np
 from typing import Optional, Dict
+from compute_rham import compute_rham
+from get_rgrid import grids_get_rgrid
+
 
 import xml.etree.ElementTree as ET
 import logging
@@ -66,6 +69,39 @@ def parse_atomic_proj(
         atmproj_nbnd=atmproj_nbnd,
         do_orthoovp=do_orthoovp,
     )
+
+    Hk = hk_data["Hk"]
+    Sk = hk_data.get("S", None)
+
+    kpts = proj_data["kpts"]
+    wk = proj_data["wk"]
+    avec = lattice_data["avec"]
+    nr = np.array([1, 1, kpts.shape[1]])
+    ivr, wr = grids_get_rgrid(nr)
+
+    vr = (avec @ ivr.T).T
+
+    nspin, nkpts, n, _ = Hk.shape
+    nR = vr.shape[0]
+    Hr = np.zeros((nspin, nR, n, n), dtype=np.complex128)
+    Sr = (
+        np.zeros((nspin, nR, n, n), dtype=np.complex128)
+        if (not do_orthoovp and Sk is not None)
+        else None
+    )
+
+    for isp in range(nspin):
+        for ir in range(nR):
+            Hr[isp, ir] = compute_rham(vr[ir], Hk[isp], kpts, wk)
+            if Sr is not None:
+                Sr[isp, ir] = compute_rham(vr[ir], Sk[..., isp], kpts, wk)
+
+    hk_data["Hr"] = Hr
+    if Sr is not None:
+        hk_data["Sr"] = Sr
+    hk_data["ivr"] = ivr
+    hk_data["wr"] = wr
+    hk_data["vr"] = vr
 
     if write_intermediate:
         output_prefix = os.path.join(work_dir, prefix + postfix)
@@ -361,13 +397,11 @@ def write_internal_format_files(
         rham = ET.SubElement(spin_tag, "RHAM")
         for ir in range(nrtot):
             rtag = f"VR{iotk_index(ir + 1)}"
-            add_array(
-                rham, rtag, Hk[isp, 0]
-            )  # TODO: replace 0 with actual ir-r-space FT
+            add_array(rham, rtag, Hk[isp, 0])
 
             if not do_orthoovp and Sk is not None:
                 stag = f"OVERLAP{iotk_index(ir + 1)}"
-                add_array(rham, stag, Sk[:, :, 0, isp])  # TODO: replace 0 with ir index
+                add_array(rham, stag, Sk[:, :, 0, isp])
 
     tree = ET.ElementTree(root)
     tree.write(ham_file, encoding="utf-8", xml_declaration=True)
