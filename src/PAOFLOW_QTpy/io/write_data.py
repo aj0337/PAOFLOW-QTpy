@@ -1,6 +1,14 @@
 import numpy as np
 from pathlib import Path
 
+from typing import Dict
+
+
+import xml.etree.ElementTree as ET
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def write_dos_and_conductance(
     egrid: np.ndarray,
@@ -178,3 +186,71 @@ def write_eigenchannels(
         print(f"[INFO] Eigenchannels written to: {filepath}")
 
     return filepath
+
+
+def iotk_index(n: int) -> str:
+    """Return IOTK index tag used in XML labels (e.g., 1 → '001')."""
+    return f"{n:03d}"
+
+
+def write_internal_format_files(
+    output_prefix: str,
+    hk_data: Dict[str, np.ndarray],
+    proj_data: Dict[str, np.ndarray],
+    lattice_data: Dict[str, np.ndarray],
+    do_orthoovp: bool,
+) -> None:
+    ham_file = output_prefix + ".ham"
+
+    Hk = hk_data["Hk"]
+    Sk = hk_data.get("S", None)
+
+    kpts = proj_data["kpts"]
+    wk = proj_data["wk"]
+
+    avec = lattice_data["avec"]
+    bvec = lattice_data["bvec"]
+
+    ivr = np.indices(kpts.shape[1:]).reshape(3, -1).T
+    wr = np.ones(ivr.shape[0]) / ivr.shape[0]
+
+    nspin = Hk.shape[0]
+    nrtot = ivr.shape[0]
+
+    root = ET.Element("HAMILTONIAN")
+
+    def mat_to_text(matrix: np.ndarray) -> str:
+        flat = matrix.flatten()
+        if np.iscomplexobj(matrix):
+            return "\n" + " ".join(f"{z.real:.12e} {z.imag:.12e}" for z in flat) + "\n"
+        else:
+            return "\n" + " ".join(f"{x:.12e}" for x in flat) + "\n"
+
+    def add_array(parent, tag, array, attrib=None):
+        elem = ET.SubElement(parent, tag)
+        if attrib:
+            for key, val in attrib.items():
+                elem.set(key, val)
+        elem.text = mat_to_text(array)
+        return elem
+
+    add_array(root, "DIRECT_LATTICE", avec.T, {"units": "bohr"})
+    add_array(root, "RECIPROCAL_LATTICE", bvec.T, {"units": "bohr^-1"})
+    add_array(root, "VKPT", kpts.T, {"units": "crystal"})
+    add_array(root, "WK", wk)
+    add_array(root, "IVR", ivr)
+    add_array(root, "WR", wr)
+
+    for isp in range(nspin):
+        spin_tag = ET.SubElement(root, f"SPIN{iotk_index(isp + 1)}")
+        rham = ET.SubElement(spin_tag, "RHAM")
+        for ir in range(nrtot):
+            rtag = f"VR{iotk_index(ir + 1)}"
+            add_array(rham, rtag, Hk[isp, 0])
+
+            if not do_orthoovp and Sk is not None:
+                stag = f"OVERLAP{iotk_index(ir + 1)}"
+                add_array(rham, stag, Sk[:, :, 0, isp])
+
+    tree = ET.ElementTree(root)
+    tree.write(ham_file, encoding="utf-8", xml_declaration=True)
