@@ -1,0 +1,33 @@
+======================================================================
+              =                                            =
+              =           Quantum Transport Code           =
+              =     (https://aflowlib.org/src/paoflow/)    =
+              =                                            =
+======================================================================
+Program <conductor.py>  v. 0.0.1  starts ...
+Date 2025-05-27 at 23:07:14
+Number of MPI processes:    1
+  ======================================================================
+  =                       Conductor Initialization                     =
+  ======================================================================
+  ./al5.save/atomic_proj.xml file fmt: atmproj
+Begins atmproj_read_ext
+Begins reading eigenvalues
+Finished reading eigenvalues
+Begins reading projections
+Ends reading projections
+Ends atmproj_read_ext
+  Dimensions found in atomic_proj.{dat,xml}:
+    nbnd     :    60
+    nkpts    :     8
+    nspin    :     1
+    natomwfc :    20
+    nelec    :    15.000000
+    efermi   :    -0.126746
+    energy_units :  Rydberg
+
+  ATMPROJ conversion to be done using:
+    atmproj_nbnd :    60
+    atmproj_thr  :     0.900000
+    atmproj_sh   :     3.500000
+    atmproj_do_norm:  False

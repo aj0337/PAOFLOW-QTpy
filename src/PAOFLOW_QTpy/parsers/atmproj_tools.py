@@ -1,15 +1,26 @@
 import os
+import re
 import numpy as np
-from typing import Optional, Dict
-from compute_rham import compute_rham
-from get_rgrid import grids_get_rgrid
-from io.write_data import write_internal_format_files, iotk_index
-
-
 import xml.etree.ElementTree as ET
+from typing import Optional, Dict
+
+from mpi4py import MPI
+from PAOFLOW_QTpy.compute_rham import compute_rham
+from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
+from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
+from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
+
 import logging
 
 logger = logging.getLogger(__name__)
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
+
+def log_rank0(message: str):
+    if rank == 0:
+        print(message)
 
 
 def parse_atomic_proj(
@@ -20,6 +31,7 @@ def parse_atomic_proj(
     atmproj_sh: float = 10.0,
     atmproj_thr: float = 0.0,
     atmproj_nbnd: Optional[int] = None,
+    atmproj_do_norm: bool = False,
     do_orthoovp: bool = False,
     write_intermediate: bool = True,
 ) -> Dict[str, np.ndarray]:
@@ -52,16 +64,32 @@ def parse_atomic_proj(
     Dict[str, np.ndarray]
         A dictionary with keys like 'Hk', 'S', 'eigvals', 'proj', etc.
     """
-
     savedir = os.path.dirname(file_proj)
     file_data = os.path.join(savedir, "data-file.xml")
     if not os.path.exists(file_data):
         raise FileNotFoundError(f"Expected data-file.xml at: {file_data}")
 
-    lattice_data = parse_data_file(file_data)
+    log_rank0(f"  {file_proj} file fmt: atmproj")
 
+    lattice_data = qexml_read_cell(file_data)
     proj_data = parse_atomic_proj_xml(file_proj)
 
+    log_rank0("  Dimensions found in atomic_proj.{dat,xml}:")
+    log_rank0(f"    nbnd     : {proj_data['nbnd']:>5}")
+    log_rank0(f"    nkpts    : {proj_data['nkpts']:>5}")
+    log_rank0(f"    nspin    : {proj_data['nspin']:>5}")
+    log_rank0(f"    natomwfc : {proj_data['natomwfc']:>5}")
+    log_rank0(f"    nelec    : {proj_data['nelec']:>12.6f}")
+    log_rank0(f"    efermi   : {proj_data['efermi']:>12.6f}")
+    log_rank0(f"    energy_units :  {proj_data['energy_units']}   ")
+    log_rank0("")
+    log_rank0("  ATMPROJ conversion to be done using:")
+    log_rank0(
+        f"    atmproj_nbnd : {atmproj_nbnd if atmproj_nbnd is not None else proj_data['nbnd']:>5}"
+    )
+    log_rank0(f"    atmproj_thr  : {atmproj_thr:>12.6f}")
+    log_rank0(f"    atmproj_sh   : {atmproj_sh:>12.6f}")
+    log_rank0(f"    atmproj_do_norm:  {atmproj_do_norm}")
     hk_data = build_hamiltonian_from_proj(
         proj_data,
         lattice_data,
@@ -113,163 +141,94 @@ def parse_atomic_proj(
     return hk_data
 
 
-def parse_data_file(file_data: str) -> Dict:
-    """
-    Parse data-file.xml to extract lattice vectors, atomic species, and positions.
-
-    Parameters
-    ----------
-    `file_data` : str
-        Path to QE's data-file.xml
-
-    Returns
-    -------
-    Dict
-        Dictionary with keys: 'alat', 'avec', 'bvec', 'tau', 'atm_symb', 'ityp', 'nat', 'nsp'
-    """
-    ns = {"qes": "http://www.quantum-espresso.org/ns/qes"}
-    tree = ET.parse(file_data)
-    root = tree.getroot()
-
-    def read_vec3(elem):
-        return np.array([float(x) for x in elem.text.strip().split()])
-
-    alat = float(
-        root.find(".//qes:CELL/qes:UNITS_FOR_LATTICE_PARAMETER", ns).attrib["alat"]
-    )
-    a1 = read_vec3(root.find(".//qes:CELL/qes:A1", ns))
-    a2 = read_vec3(root.find(".//qes:CELL/qes:A2", ns))
-    a3 = read_vec3(root.find(".//qes:CELL/qes:A3", ns))
-    avec = np.vstack([a1, a2, a3]).T
-
-    b1 = read_vec3(root.find(".//qes:CELL/qes:B1", ns))
-    b2 = read_vec3(root.find(".//qes:CELL/qes:B2", ns))
-    b3 = read_vec3(root.find(".//qes:CELL/qes:B3", ns))
-    bvec = np.vstack([b1, b2, b3]).T
-
-    atoms = root.findall(".//qes:IONS/qes:ATOM", ns)
-    nat = len(atoms)
-    tau = np.zeros((3, nat))
-    ityp = np.zeros(nat, dtype=int)
-    atm_symb = []
-
-    for i, atom in enumerate(atoms):
-        tau[:, i] = read_vec3(atom.find("qes:TAU", ns))
-        atm_symb.append(atom.attrib["SPECIES"])
-        ityp[i] = int(atom.attrib["ITYP"])
-
-    nsp = max(ityp)
-
-    return {
-        "alat": alat,
-        "avec": avec,
-        "bvec": bvec,
-        "tau": tau,
-        "atm_symb": atm_symb,
-        "ityp": ityp,
-        "nat": nat,
-        "nsp": nsp,
-    }
-
-
 def parse_atomic_proj_xml(file_proj: str) -> Dict:
-    """
-    Parse atomic_proj.xml to extract band structure and projection data.
+    log_rank0("Begins atmproj_read_ext")
+    log_rank0("Begins reading eigenvalues")
 
-    Parameters
-    ----------
-    `file_proj` : str
-        Path to atomic_proj.xml.
-
-    Returns
-    -------
-    Dict
-        Dictionary with keys:
-        - 'nbnd' : int
-        - 'nkpts' : int
-        - 'nspin' : int
-        - 'natomwfc' : int
-        - 'nelec' : float
-        - 'efermi' : float
-        - 'energy_units' : str
-        - 'eigvals' : ndarray, shape (nbnd, nkpts, nspin)
-        - 'proj' : ndarray, shape (natomwfc, nbnd, nkpts, nspin)
-        - 'overlap' : ndarray or None, shape (natomwfc, natomwfc, nkpts, nspin)
-        - 'kpts' : ndarray, shape (3, nkpts)
-        - 'wk' : ndarray, shape (nkpts,)
-    """
     tree = ET.parse(file_proj)
     root = tree.getroot()
 
-    def get_text(tag):
-        return root.find(tag).text.strip()
+    # Read header information
+    header = root.find("HEADER")
+    nbnd = int(header.findtext("NUMBER_OF_BANDS"))
+    nkpt = int(header.findtext("NUMBER_OF_K-POINTS"))
+    nspin = int(header.findtext("NUMBER_OF_SPIN_COMPONENTS"))
+    natomwfc = int(header.findtext("NUMBER_OF_ATOMIC_WFC"))
+    nelec = float(header.findtext("NUMBER_OF_ELECTRONS"))
+    efermi = float(header.findtext("FERMI_ENERGY"))
+    energy_units = header.find("UNITS_FOR_ENERGY").attrib["UNITS"]
 
-    nbnd = int(get_text("HEADER/NUMBER_OF_BANDS"))
-    nkpts = int(get_text("HEADER/NUMBER_OF_K-POINTS"))
-    nspin = int(get_text("HEADER/NUMBER_OF_SPIN_COMPONENTS"))
-    natomwfc = int(get_text("HEADER/NUMBER_OF_ATOMIC_WFC"))
-    nelec = float(get_text("HEADER/NUMBER_OF_ELECTRONS"))
-    efermi = float(get_text("HEADER/FERMI_ENERGY"))
-    energy_units = root.find("HEADER/UNITS_FOR_ENERGY").attrib["UNITS"]
+    # Read kpoints and weights (if present)
+    kpoints = np.array(
+        [
+            [float(val) for val in line.strip().split()]
+            for line in root.find("K-POINTS").text.strip().split("\n")
+        ]
+    ).T
+    wk = np.array(
+        [float(val) for val in root.find("WEIGHT_OF_K-POINTS").text.strip().split()]
+    )
 
-    eigvals = np.zeros((nbnd, nkpts, nspin))
-    proj = np.zeros((natomwfc, nbnd, nkpts, nspin), dtype=np.complex128)
-    overlap = np.zeros((natomwfc, natomwfc, nkpts, nspin), dtype=np.complex128)
-
-    kpts = np.zeros((3, nkpts))
-    wk = np.zeros(nkpts)
-
-    for ik, kp in enumerate(root.find("K-POINTS").text.strip().split("\n")):
-        kpts[:, ik] = [float(x) for x in kp.strip().split()]
-
-    for ik, w in enumerate(root.find("WEIGHT_OF_K-POINTS").text.strip().split()):
-        wk[ik] = float(w)
-
-    for ik, kpoint in enumerate(root.find("EIGENVALUES")):
+    # === Eigenvalues ===
+    eigvals = np.zeros((nbnd, nkpt, nspin))
+    eig_section = root.find("EIGENVALUES")
+    for ik, kpoint in enumerate(eig_section):
         for isp in range(nspin):
-            spin_tag = f"EIG{iotk_index(isp + 1)}" if nspin > 1 else "EIG"
-            eig_tag = kpoint.find(spin_tag)
-            eigvals[:, ik, isp] = [float(e) for e in eig_tag.text.strip().split()]
+            spin_tag = f"EIG{iotk_index(isp+1)}" if nspin > 1 else "EIG"
+            eig_tag = kpoint.find(spin_tag) if nspin > 1 else kpoint.find("EIG")
+            eigvals[:, ik, isp] = [float(x) for x in eig_tag.text.strip().split()]
 
-    for ik, kpoint in enumerate(root.find("PROJECTIONS")):
+    log_rank0("Finished reading eigenvalues")
+
+    # === Projections ===
+    log_rank0("Begins reading projections")
+    proj = np.zeros((natomwfc, nbnd, nkpt, nspin), dtype=np.complex128)
+    projections_section = root.find("PROJECTIONS")
+    for ik, kpoint in enumerate(projections_section):
         for isp in range(nspin):
             spin_node = (
-                kpoint.find(f"SPIN{iotk_index(isp + 1)}") if nspin > 1 else kpoint
+                kpoint.find(f"SPIN{iotk_index(isp+1)}") if nspin == 2 else kpoint
             )
-            for ia in range(natomwfc):
-                tag = f"ATMWFC{iotk_index(ia + 1)}"
-                line = spin_node.find(tag).text.strip().split()
+            for ias in range(natomwfc):
+                tag = f"ATMWFC{iotk_index(ias+1)}"
                 for ib in range(nbnd):
-                    re, im = float(line[2 * ib]), float(line[2 * ib + 1])
-                    proj[ia, ib, ik, isp] = re + 1j * im
+                    data = re.split(r"[\s,]+", spin_node.find(tag).text.strip())
+                    real, im = float(data[2 * ib]), float(data[2 * ib + 1])
+                    proj[ias, ib, ik, isp] = real + 1j * im
 
-    ovlp_root = root.find("OVERLAPS")
-    if ovlp_root is not None:
-        for ik, kpoint in enumerate(ovlp_root):
+    log_rank0("Ends reading projections")
+    log_rank0("Ends atmproj_read_ext")
+
+    # === Overlap ===
+    overlap_section = root.find("OVERLAPS")
+    overlap = None
+    if overlap_section is not None:
+        overlap = np.zeros((natomwfc, natomwfc, nkpt, nspin), dtype=np.complex128)
+        for ik, kpoint in enumerate(overlap_section):
             for isp in range(nspin):
-                tag = f"OVERLAP{iotk_index(isp + 1)}"
-                data = kpoint.find(tag).text.strip().split()
-                mat = np.array(
+                tag = f"OVERLAP{iotk_index(isp+1)}"
+                data = re.split(r"[\s,]+", kpoint.find(tag).text.strip())
+                matrix = np.array(
                     [
                         complex(float(data[i]), float(data[i + 1]))
                         for i in range(0, len(data), 2)
                     ]
                 )
-                overlap[:, :, ik, isp] = mat.reshape((natomwfc, natomwfc))
+                overlap[:, :, ik, isp] = matrix.reshape(natomwfc, natomwfc)
 
     return {
         "nbnd": nbnd,
-        "nkpts": nkpts,
+        "nkpts": nkpt,
         "nspin": nspin,
         "natomwfc": natomwfc,
         "nelec": nelec,
         "efermi": efermi,
         "energy_units": energy_units,
+        "kpts": kpoints,
+        "wk": wk,
         "eigvals": eigvals,
         "proj": proj,
-        "overlap": overlap if ovlp_root is not None else None,
-        "kpts": kpts,
-        "wk": wk,
+        "overlap": overlap,
     }
 
 
