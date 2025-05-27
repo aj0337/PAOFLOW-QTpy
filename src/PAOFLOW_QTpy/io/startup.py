@@ -16,14 +16,10 @@ def startup(main_name):
     if rank == 0:
         print("=" * 70)
         print("              =                                            =")
-        print("              =     *** WanT *** Wannier Transport Code    =")
-        print("              =        (www.wannier-transport.org)         =")
-        print("              =      Ultra Soft Pseudopotential Implem.    =")
+        print("              =           Quantum Transport Code           =")
+        print("              =     (https://aflowlib.org/src/paoflow/)    =")
         print("              =                                            =")
         print("=" * 70)
         print(f"Program <{main_name}>  v. {__version__}  starts ...")
         print(f"Date {current_date} at {current_time}")
         print(f"Number of MPI processes:    {size}")
-
-    # Additional logic for architecture/compilation details can be added here
-    # ...
