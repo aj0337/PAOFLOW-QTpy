@@ -189,8 +189,8 @@ def write_eigenchannels(
 
 
 def iotk_index(n: int) -> str:
-    """Return IOTK index tag used in XML labels (e.g., 1 → '001')."""
-    return f"{n:03d}"
+    """Return IOTK index tag used in XML labels (e.g., 1 → '.1')."""
+    return f".{n}"
 
 
 def write_internal_format_files(
