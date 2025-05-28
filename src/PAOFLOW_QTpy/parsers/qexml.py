@@ -18,8 +18,8 @@ def qexml_read_cell(file_path: str) -> Dict[str, Any]:
     `cell_data` : dict
         Dictionary containing the lattice vectors and parameters:
         - `alat` : float
-        - `a1`, `a2`, `a3` : np.ndarray
-        - `b1`, `b2`, `b3` : np.ndarray
+        - `avec` : np.ndarray, shape (3,3)
+        - `bvec` : np.ndarray, shape (3,3)
     """
     file_path = Path(file_path)
     if not file_path.is_file():
@@ -46,14 +46,11 @@ def qexml_read_cell(file_path: str) -> Dict[str, Any]:
     b2 = find_array("b2")
     b3 = find_array("b3")
 
-    cell_data = {
-        "alat": alat,
-        "a1": a1,
-        "a2": a2,
-        "a3": a3,
-        "b1": b1,
-        "b2": b2,
-        "b3": b3,
-    }
+    avec = np.column_stack((a1, a2, a3))
+    bvec = np.column_stack((b1, b2, b3))
 
-    return cell_data
+    return {
+        "alat": alat,
+        "avec": avec,
+        "bvec": bvec,
+    }
