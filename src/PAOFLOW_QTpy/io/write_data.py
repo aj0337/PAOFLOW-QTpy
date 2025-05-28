@@ -211,8 +211,8 @@ def write_internal_format_files(
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
 
-    ivr = np.indices(kpts.shape[1:]).reshape(3, -1).T
-    wr = np.ones(ivr.shape[0]) / ivr.shape[0]
+    ivr = hk_data["ivr"]
+    wr = hk_data["wr"]
 
     nspin = Hk.shape[0]
     nrtot = ivr.shape[0]
