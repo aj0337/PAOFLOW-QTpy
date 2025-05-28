@@ -90,9 +90,9 @@ def parse_atomic_proj(
     log_rank0(f"    atmproj_thr  : {atmproj_thr:>12.6f}")
     log_rank0(f"    atmproj_sh   : {atmproj_sh:>12.6f}")
     log_rank0(f"    atmproj_do_norm:  {atmproj_do_norm}")
+
     hk_data = build_hamiltonian_from_proj(
         proj_data,
-        lattice_data,
         atmproj_sh=atmproj_sh,
         atmproj_thr=atmproj_thr,
         atmproj_nbnd=atmproj_nbnd,
@@ -123,7 +123,9 @@ def parse_atomic_proj(
         for ir in range(nR):
             Hr[isp, ir] = compute_rham(vr[ir], Hk[isp], kpts, wk)
             if Sr is not None:
-                Sr[isp, ir] = compute_rham(vr[ir], Sk[..., isp], kpts, wk)
+                Sr[isp, ir] = compute_rham(
+                    vr[ir], Sk[..., isp].transpose(2, 0, 1), kpts, wk
+                )
 
     hk_data["Hr"] = Hr
     if Sr is not None:
@@ -236,6 +238,7 @@ def build_hamiltonian_from_proj(
     proj_data: Dict,
     atmproj_sh: float,
     atmproj_thr: float,
+    atmproj_nbnd: Optional[int],
     do_orthoovp: bool,
 ) -> Dict[str, np.ndarray]:
     """
@@ -245,8 +248,6 @@ def build_hamiltonian_from_proj(
     ----------
     `proj_data` : Dict
         Output from parse_atomic_proj_xml.
-    `lattice_data` : Dict
-        Output from parse_data_file.
     `atmproj_sh` : float
         Energy shift used as a band filter.
     `atmproj_thr` : float
@@ -261,7 +262,7 @@ def build_hamiltonian_from_proj(
     Dict[str, np.ndarray]
         Includes keys:
         - 'Hk': complex ndarray, shape (nspin, nkpts, natomwfc, natomwfc)
-        - 'S' : complex ndarray, shape (nspin, nkpts, natomwfc, natomwfc) if available
+        - 'S' : complex ndarray, shape (natomwfc, natomwfc, nkpts, nspin) if available
     """
     nbnd = proj_data["nbnd"]
     nkpts = proj_data["nkpts"]
@@ -272,6 +273,12 @@ def build_hamiltonian_from_proj(
     proj = proj_data["proj"]
     S_raw = proj_data["overlap"]
 
+    atmproj_nbnd_ = (
+        min(atmproj_nbnd, nbnd)
+        if atmproj_nbnd is not None and atmproj_nbnd > 0
+        else nbnd
+    )
+
     Hk = np.zeros((nspin, nkpts, natomwfc, natomwfc), dtype=np.complex128)
     Sk = None
 
@@ -280,7 +287,7 @@ def build_hamiltonian_from_proj(
 
     for isp in range(nspin):
         for ik in range(nkpts):
-            for ib in range(nbnd):
+            for ib in range(atmproj_nbnd_):
                 if eig[ib, ik, isp] >= atmproj_sh:
                     continue
 
