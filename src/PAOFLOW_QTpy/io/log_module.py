@@ -2,6 +2,11 @@ import logging
 from datetime import datetime
 import psutil
 
+from mpi4py import MPI
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
 # Initialize the logger
 logger = logging.getLogger("my_logger")
 logger.setLevel(logging.DEBUG)
@@ -16,6 +21,11 @@ alloc = True  # Assuming this is set somewhere in your application
 stack = []
 stack_maxdim = 100  # Define the maximum stack size
 stack_index = 0
+
+
+def log_rank0(message: str):
+    if rank == 0:
+        print(message)
 
 
 def log_push(name):

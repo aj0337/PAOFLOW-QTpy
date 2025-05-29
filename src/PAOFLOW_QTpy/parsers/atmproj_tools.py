@@ -4,23 +4,11 @@ import numpy as np
 import xml.etree.ElementTree as ET
 from typing import Optional, Dict
 
-from mpi4py import MPI
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-
-
-def log_rank0(message: str):
-    if rank == 0:
-        print(message)
+from PAOFLOW_QTpy.io.log_module import log_rank0
 
 
 def parse_atomic_proj(
