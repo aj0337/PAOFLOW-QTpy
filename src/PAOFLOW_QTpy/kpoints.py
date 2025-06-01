@@ -4,19 +4,32 @@ from typing import Tuple
 
 def kpoints_rmask(rvect: np.ndarray, transport_dir: int) -> np.ndarray:
     """
-    Expand 2D reciprocal vector `rvect` to 3D according to transport direction.
+    Expand a 2D reciprocal vector `rvect` to 3D according to the transport direction.
 
     Parameters
     ----------
     `rvect` : (2,) ndarray
-        2D k-point or R-vector.
+        2D k-point or R-vector in reciprocal lattice units (fractional coordinates).
     `transport_dir` : int
-        Direction of transport (1, 2, or 3).
+        Direction of transport (1 for x, 2 for y, 3 for z).
 
     Returns
     -------
     `rmask` : (3,) ndarray
-        Expanded 3D vector in crystal coordinates.
+        Expanded 3D vector in reciprocal lattice units, with zeros in the transport direction.
+
+    Notes
+    -----
+    This function maps a 2D vector in the plane perpendicular to the transport direction
+    into a full 3D vector by inserting zeros along the transport direction.
+    For example, if the transport direction is z (3), a 2D k-point (kx, ky) is mapped to (kx, ky, 0).
+
+    Mathematically:
+        Let `rvect` = (r₁, r₂)
+        The 3D expansion is:
+            if transport_dir == 1 (x):   (0, r₁, r₂)
+            if transport_dir == 2 (y):   (r₁, 0, r₂)
+            if transport_dir == 3 (z):   (r₁, r₂, 0)
     """
     rmask = np.zeros(3)
     if transport_dir == 1:
@@ -33,19 +46,31 @@ def kpoints_rmask(rvect: np.ndarray, transport_dir: int) -> np.ndarray:
 
 def kpoints_equivalent(v1: np.ndarray, v2: np.ndarray, tol: float = 1e-6) -> bool:
     """
-    Check if two 2D k-points are equivalent under time-reversal symmetry.
+    Check if two 2D k-points are equivalent under time-reversal symmetry (modulo 1).
 
     Parameters
     ----------
     `v1`, `v2` : (2,) ndarray
-        k-point vectors.
+        2D k-point vectors in reciprocal lattice units (fractional coordinates).
     `tol` : float
-        Tolerance for modulo check.
+        Tolerance for equality check.
 
     Returns
     -------
     `is_equiv` : bool
-        True if v1 ≈ -v2 (mod 1)
+        True if v1 ≈ -v2 (mod 1), i.e., they are time-reversal partners.
+
+    Notes
+    -----
+    In a time-reversal symmetric system, a k-point `k` is equivalent to `-k` (modulo the reciprocal lattice).
+    This function checks:
+        (v1 + v2) % 1 ≈ 0
+
+    For example:
+        v1 = (0.25, 0.5), v2 = (-0.25, -0.5) -> equivalent
+        v1 = (0.25, 0.5), v2 = (0.25, 0.5)   -> not equivalent (unless v1 == 0)
+
+    This is essential for symmetrizing the k-point mesh and avoiding double counting.
     """
     return np.allclose((v1 + v2) % 1.0, 0.0, atol=tol)
 
@@ -57,25 +82,45 @@ def initialize_kpoints(
     use_symm: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Generate 3D k-points and weights based on a 2D mesh orthogonal to the transport direction.
+    Generate 3D k-points and weights on a uniform 2D mesh orthogonal to the transport direction.
 
     Parameters
     ----------
     `nk_par` : Tuple[int, int]
-        2D mesh along the two directions orthogonal to transport.
+        Number of k-points along the two non-transport directions (nkx, nky).
     `s_par` : Tuple[int, int]
-        2D shifts in those directions.
+        Shifts (in fractional units) for the mesh in the two non-transport directions.
     `transport_dir` : int
-        Direction of transport (1-based, 1 = x, 2 = y, 3 = z).
+        Transport direction (1 = x, 2 = y, 3 = z).
     `use_symm` : bool
-        Whether to enforce k ≡ -k symmetry.
+        Whether to symmetrize the mesh under time-reversal (k ≡ -k).
 
     Returns
     -------
-    `vkpt_par3D` : ndarray of shape (nkpts, 3)
-        3D k-point vectors in crystal units.
-    `wk_par` : ndarray of shape (nkpts,)
-        k-point weights (normalized).
+    `vkpt_par3D` : (nkpts, 3) ndarray
+        Generated 3D k-points in fractional coordinates.
+    `wk_par` : (nkpts,) ndarray
+        Normalized weights for each k-point.
+
+    Notes
+    -----
+    The k-point grid is generated as:
+        kx(i) = (i - nkx//2) / nkx + shift_x / (2 * nkx)
+        ky(j) = (j - nky//2) / nky + shift_y / (2 * nky)
+    for i in [0, nkx-1], j in [0, nky-1].
+
+    If `use_symm` is True, pairs of points (k, -k) are considered equivalent under time-reversal symmetry
+    and only unique representatives are kept.
+
+    The resulting weights are normalized such that:
+        sum(wk_par) = 1.
+
+    Mathematically:
+        For a uniform mesh in the 2D plane orthogonal to transport:
+            k = (kx, ky, 0) for transport_dir = 3
+        where the 3D extension is given by `kpoints_rmask`.
+
+    This is analogous to Monkhorst-Pack grids used in bandstructure calculations.
     """
     mesh_x, mesh_y = nk_par
     shift_x, shift_y = s_par
@@ -111,19 +156,36 @@ def compute_fourier_phase_table(
     ivr_par: np.ndarray,
 ) -> np.ndarray:
     """
-    Compute Fourier transform phase factors exp(i 2π k · R) for FFT table.
+    Compute Fourier phase factors exp(i 2π k · R) for each pair of k-point and R-vector.
 
     Parameters
     ----------
     `vkpts` : (nkpts, 2) or (nkpts, 3) ndarray
-        k-point vectors in crystal units.
+        k-point vectors in fractional reciprocal lattice units.
     `ivr_par` : (nR, 2) or (nR, 3) ndarray
-        R-vectors in crystal units (integer format).
+        R-vectors in fractional crystal units (integer multiples of lattice vectors).
 
     Returns
     -------
     `table_par` : (nR, nkpts) ndarray of complex128
-        Phase factors e^{i 2π k·R} for FFT or interpolation.
+        Phase factors e^{i 2π k · R} used for Fourier transforms or interpolation.
+
+    Notes
+    -----
+    This computes the plane-wave phase factors:
+        table_par[ir, ik] = exp(i * 2π * (k · R))
+    where:
+        k : reciprocal vector (fractional units)
+        R : real-space vector (fractional units)
+
+    These factors are essential for transforming quantities between real and reciprocal space.
+    For example, they are used in:
+        - Evaluating Fourier series expansions
+        - Computing Green's functions or self-energies in k-space
+        - Constructing Hamiltonians or overlaps in different representations
+
+    The 2π factor comes from the convention of expressing k and R in fractional units:
+        k = k_cartesian / (2π)  ->  k_cartesian = 2π * k_fractional
     """
     nR = ivr_par.shape[0]
     nkpts = vkpts.shape[0]
