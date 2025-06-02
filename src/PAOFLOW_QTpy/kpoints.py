@@ -87,7 +87,7 @@ def initialize_kpoints(
     Parameters
     ----------
     `nk_par` : Tuple[int, int]
-        Number of k-points along the two non-transport directions (nkx, nky).
+        Number of k-points along the two non-transport directions.
     `s_par` : Tuple[int, int]
         Shifts (in fractional units) for the mesh in the two non-transport directions.
     `transport_dir` : int
@@ -196,3 +196,85 @@ def compute_fourier_phase_table(
             arg = 2 * np.pi * np.dot(vkpts[ik], ivr_par[ir])
             table[ir, ik] = np.exp(1j * arg)
     return table
+
+
+def initialize_r_vectors(
+    nr_par: Tuple[int, int],
+    transport_dir: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate 3D R-vectors and weights based on a uniform 2D integer grid orthogonal to the transport direction.
+
+    Parameters
+    ----------
+    `nr_par` : Tuple[int, int]
+        2D mesh sizes for R-vectors in the directions orthogonal to transport.
+    `transport_dir` : int
+        Direction of transport (1-based, 1 = x, 2 = y, 3 = z).
+
+    Returns
+    -------
+    `ivr_par3D` : (nR, 3) ndarray of int
+        3D integer R-vectors in crystal coordinates.
+    `wr_par` : (nR,) ndarray of float
+        Weights for each R-vector (normalized to match Fortran behavior).
+
+    Notes
+    -----
+    The 2D R-vectors are generated as:
+        R_i = i - (nr_x + 1) // 2
+        R_j = j - (nr_y + 1) // 2
+    for i in [1, nr_x], j in [1, nr_y].
+
+    Hermitian symmetry is enforced by ensuring that for each R, -R is present.
+    If a corresponding -R is not found, it is added, and the weights of both R and -R are halved.
+
+    The 2D vectors are then expanded to 3D using:
+        if transport_dir == 1: (0, R1, R2)
+        if transport_dir == 2: (R1, 0, R2)
+        if transport_dir == 3: (R1, R2, 0)
+    """
+
+    nx, ny = nr_par
+    R_list = []
+    w_list = []
+
+    for j in range(1, ny + 1):
+        for i in range(1, nx + 1):
+            Rx = i - (nx + 1) // 2
+            Ry = j - (ny + 1) // 2
+            R_list.append([Rx, Ry])
+            w_list.append(1.0)
+
+    R_array = np.array(R_list, dtype=int)
+    w_array = np.array(w_list, dtype=np.float64)
+
+    counter = len(R_array)
+    i = 0
+    while i < counter:
+        R = R_array[i]
+        found = np.any(np.all(R_array[:counter] == -R, axis=1))
+        if not found:
+            R_array = np.vstack([R_array, -R])
+            w_array = np.append(w_array, 0.5 * w_array[i])
+            w_array[i] *= 0.5
+            counter += 1
+        i += 1
+
+    def kpoints_imask(ivect: np.ndarray, transport_dir: int) -> np.ndarray:
+        imask = np.zeros(3, dtype=int)
+        if transport_dir == 1:
+            imask[1:] = ivect
+        elif transport_dir == 2:
+            imask[0] = ivect[0]
+            imask[2] = ivect[1]
+        elif transport_dir == 3:
+            imask[:2] = ivect
+        else:
+            raise ValueError(f"Invalid transport direction: {transport_dir}")
+        return imask
+
+    ivr_par3D = np.array([kpoints_imask(R, transport_dir) for R in R_array])
+    wr_par = w_array
+
+    return ivr_par3D, wr_par
