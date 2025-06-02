@@ -2,34 +2,77 @@ from PAOFLOW_QTpy.io.startup import startup
 from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
+from PAOFLOW_QTpy.io.get_input_params import load_summary_data_from_yaml
+from PAOFLOW_QTpy.kpoints import initialize_kpoints, initialize_r_vectors
+from mpi4py import MPI
+
+from PAOFLOW_QTpy.smearing_base import smearing_func
+from PAOFLOW_QTpy.smearing_T import SmearingData
+from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 
 
 def main():
-    file_proj = "./al5.save/atomic_proj.xml"
+    yaml_file = "./conductor.yaml"
+    data_dict = load_summary_data_from_yaml(yaml_file)
+    file_proj = data_dict["datafile_C"]
     work_dir = "./al5.save"
-    prefix = "al5"
-    postfix = "_bulk"
-    atmproj_sh = 3.5
-    atmproj_thr = 0.9
-    atmproj_nbnd = 60
-    atmproj_do_norm = False
-    do_orthoovp = True
+    postfix = data_dict["postfix"]
+    atmproj_sh = data_dict["atmproj_sh"]
+    atmproj_thr = data_dict["atmproj_thr"]
+    do_orthoovp = data_dict["do_orthoovp"]
+
+    comm = MPI.COMM_WORLD
+    data_dict["nproc"] = comm.Get_size()
 
     startup("conductor.py")
     write_header("Conductor Initialization")
+
     parse_atomic_proj(
         file_proj=file_proj,
         work_dir=work_dir,
-        prefix=prefix,
         postfix=postfix,
         atmproj_sh=atmproj_sh,
         atmproj_thr=atmproj_thr,
-        atmproj_nbnd=atmproj_nbnd,
-        atmproj_do_norm=atmproj_do_norm,
         do_orthoovp=do_orthoovp,
         write_intermediate=True,
     )
-    print_summary()
+
+    data_dict["nr_par"] = [1, 1]  # TODO: Compute dynamically if possible
+
+    vkpt_par3D, wk_par = initialize_kpoints(
+        data_dict["nk"],
+        data_dict["s"],
+        data_dict["transport_dir"],
+        data_dict["use_symm"],
+    )
+    ivr_par3D, wr_par = initialize_r_vectors(
+        data_dict["nr_par"], data_dict["transport_dir"]
+    )
+
+    data_dict.update(
+        {
+            "nkpts_par": vkpt_par3D.shape[0],
+            "nrtot_par": ivr_par3D.shape[0],
+            "vkpt_par3D": vkpt_par3D.T,
+            "wk_par": wk_par,
+            "ivr_par3D": ivr_par3D.T,
+            "wr_par": wr_par,
+        }
+    )
+
+    print_summary(data_dict)
+
+    memory_tracker = MemoryTracker()
+
+    smearing_data = SmearingData(smearing_func=smearing_func)
+    smearing_data.initialize(
+        smearing_type="lorentzian", delta=1e-5, delta_ratio=5e-3, xmax=25.0
+    )
+    memory_tracker.register_section(
+        "smearing", smearing_data.memory_usage, is_allocated=True
+    )
+
+    print(memory_tracker.report(include_real_memory=True))
 
 
 if __name__ == "__main__":
