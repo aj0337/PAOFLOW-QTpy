@@ -84,8 +84,8 @@ class ConductorData(PydanticBaseModel):
     delta_ratio: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.1)] = 5.0e-3
     xmax: Annotated[NonNegativeFloat, confloat(ge=10)] = 25.0
     bias: NonNegativeFloat = 0.0
-    nk: List[NonNegativeInt] = []
-    s: List[NonNegativeInt] = []
+    nk: List[NonNegativeInt] = [0, 0]
+    s: List[NonNegativeInt] = [0, 0]
     use_sym: bool = True
     nprint: PositiveInt = 20
     niterx: PositiveInt = 200
