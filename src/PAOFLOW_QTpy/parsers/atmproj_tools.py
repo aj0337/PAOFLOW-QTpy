@@ -13,9 +13,10 @@ from PAOFLOW_QTpy.io.log_module import log_rank0
 
 def parse_atomic_proj(
     *,
+    input_dict: Optional[Dict] = None,
     file_proj: str,
     work_dir: str,
-    prefix: str,
+    prefix: str = "",
     postfix: str,
     atmproj_sh: float = 10.0,
     atmproj_thr: float = 0.0,
@@ -29,6 +30,8 @@ def parse_atomic_proj(
 
     Parameters
     ----------
+    `input_dict` : dict, optional
+        Optional input dictionary for additional parameters.
     `file_proj` : str
         Path to atomic_proj.xml.
     `work_dir` : str
