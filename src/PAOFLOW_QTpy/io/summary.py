@@ -17,7 +17,7 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
         'conduct_formula', 'carriers', 'transport_dir', 'lhave_corr', 'write_kdata',
         'write_lead_sgm', 'write_gf', 'niterx', 'nprint', 'datafile_C', 'datafile_L',
         'datafile_R', 'datafile_L_sgm', 'datafile_C_sgm', 'datafile_R_sgm',
-        'leads_are_identical', 'do_orthoovp', 'ne', 'ne_buffer', 'emin', 'emax', 'de',
+        'leads_are_identical', 'do_orthoovp', 'ne', 'ne_buffer', 'emin', 'emax', 'energy_step',
         'delta', 'smearing_type', 'nx_smear', 'xmax', 'shift_L', 'shift_C', 'shift_R',
         'shift_corr', 'nkpts_par', 'nrtot_par', 'use_symm', 'nk_par', 's_par',
         'vkpt_par3D', 'wk_par', 'ivr_par3D', 'wr_par', 'nproc'
@@ -84,12 +84,14 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
             f"            Max Frequency :{format_float(summary_data['emax'] * scale)}"
         )
         log_rank0(
-            f"              Energy Step :{format_float(summary_data['de'] * scale)}"
+            f"              Energy Step :{format_float(summary_data['energy_step'] * scale)}"
         )
     else:
         log_rank0(f"               Min Energy :{format_float(summary_data['emin'])}")
         log_rank0(f"               Max Energy :{format_float(summary_data['emax'])}")
-        log_rank0(f"              Energy Step :{format_float(summary_data['de'])}")
+        log_rank0(
+            f"              Energy Step :{format_float(summary_data['energy_step'])}"
+        )
     log_rank0(f"                     Delta :{format_float(summary_data['delta'])}")
     log_rank0(f"             Smearing Type :     {summary_data['smearing_type']}")
     log_rank0(f"             Smearing grid :{summary_data['nx_smear']:>10}")
@@ -106,8 +108,8 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
     log_rank0(f"       nkpts_par = {summary_data['nkpts_par']:>4}")
     log_rank0(f"       nrtot_par = {summary_data['nrtot_par']:>4}")
     log_rank0(f"        use_symm = {summary_data['use_symm']}")
-    nk = summary_data["nk_par"]
-    s = summary_data["s_par"]
+    nk = summary_data["nk"]
+    s = summary_data["s"]
     log_rank0(
         f"\n       Parallel kpoints grid:        nk = ( {nk[0]:3} {nk[1]:3}  1 )   s = ( {s[0]:3} {s[1]:3}  0 )"
     )
