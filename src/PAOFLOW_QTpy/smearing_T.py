@@ -1,7 +1,5 @@
-from typing import Tuple
-
 import numpy as np
-from smearing_base import smearing_func
+from typing import Optional, Callable, Tuple
 
 
 def initialize_smearing_grid(
@@ -9,6 +7,8 @@ def initialize_smearing_grid(
     delta: float = 1e-5,
     delta_ratio: float = 5e-3,
     xmax: float = 25.0,
+    *,
+    smearing_func: Callable[[float, str], float],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Initialize the numerical smearing grid and compute g_smear values using FFT-based convolution.
@@ -88,3 +88,51 @@ def initialize_smearing_grid(
     g_smear = auxp_in[ix_start:ix_end].copy()
 
     return xgrid, g_smear
+
+
+class SmearingData:
+    """
+    Encapsulates smearing grid data and computes its memory usage.
+    """
+
+    def __init__(self, smearing_func: Callable[[float, str], float]):
+        """
+        Initialize SmearingData.
+
+        Parameters
+        ----------
+        `smearing_func` : callable
+            A function f(x, type) returning the smearing function evaluated at `x` for a given type.
+        """
+        self.xgrid: Optional[np.ndarray] = None
+        self.g_smear: Optional[np.ndarray] = None
+        self.smearing_func = smearing_func
+
+    def initialize(
+        self,
+        smearing_type: str = "lorentzian",
+        delta: float = 1e-5,
+        delta_ratio: float = 5e-3,
+        xmax: float = 25.0,
+    ):
+        """
+        Initialize the smearing grid and compute `g_smear` values.
+        """
+        self.xgrid, self.g_smear = initialize_smearing_grid(
+            smearing_type=smearing_type,
+            delta=delta,
+            delta_ratio=delta_ratio,
+            xmax=xmax,
+            smearing_func=self.smearing_func,
+        )
+
+    def memory_usage(self) -> float:
+        """
+        Compute memory usage in MB, following Fortran logic.
+        """
+        cost = 0.0
+        if self.xgrid is not None and self.xgrid.size > 0:
+            cost += self.xgrid.size * 8.0 / 1_000_000.0
+        if self.g_smear is not None and self.g_smear.size > 0:
+            cost += self.g_smear.size * 16.0 / 1_000_000.0
+        return cost
