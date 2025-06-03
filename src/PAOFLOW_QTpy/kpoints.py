@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 def kpoints_rmask(rvect: np.ndarray, transport_dir: int) -> np.ndarray:
@@ -278,3 +278,48 @@ def initialize_r_vectors(
     wr_par = w_array
 
     return ivr_par3D, wr_par
+
+
+class KpointsData:
+    """
+    Encapsulates all k-point and R-point related arrays and computes memory usage.
+    """
+
+    def __init__(self):
+        self.vkpt_par: Optional[np.ndarray] = None
+        self.vkpt_par3D: Optional[np.ndarray] = None
+        self.wk_par: Optional[np.ndarray] = None
+
+        self.ivr_par: Optional[np.ndarray] = None
+        self.ivr_par3D: Optional[np.ndarray] = None
+        self.vr_par3D: Optional[np.ndarray] = None
+        self.wr_par: Optional[np.ndarray] = None
+
+        self.table_par: Optional[np.ndarray] = None
+
+    def memory_usage(self) -> float:
+        """
+        Compute total memory usage in MB based on array sizes and element types.
+        """
+        cost = 0.0
+
+        if self.vkpt_par is not None:
+            cost += self.vkpt_par.size * 8.0 / 1_000_000.0
+        if self.vkpt_par3D is not None:
+            cost += self.vkpt_par3D.size * 8.0 / 1_000_000.0
+        if self.wk_par is not None:
+            cost += self.wk_par.size * 8.0 / 1_000_000.0
+
+        if self.ivr_par is not None:
+            cost += self.ivr_par.size * 4.0 / 1_000_000.0
+        if self.ivr_par3D is not None:
+            cost += self.ivr_par3D.size * 4.0 / 1_000_000.0
+        if self.vr_par3D is not None:
+            cost += self.vr_par3D.size * 8.0 / 1_000_000.0
+        if self.wr_par is not None:
+            cost += self.wr_par.size * 8.0 / 1_000_000.0
+
+        if self.table_par is not None:
+            cost += self.table_par.size * 16.0 / 1_000_000.0
+
+        return cost

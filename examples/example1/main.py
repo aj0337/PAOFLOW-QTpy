@@ -8,6 +8,7 @@ from mpi4py import MPI
 
 from PAOFLOW_QTpy.smearing_base import smearing_func
 from PAOFLOW_QTpy.smearing_T import SmearingData
+from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 
 
@@ -70,6 +71,15 @@ def main():
     )
     memory_tracker.register_section(
         "smearing", smearing_data.memory_usage, is_allocated=True
+    )
+
+    kpoints_data = KpointsData()
+    kpoints_data.vkpt_par3D = vkpt_par3D
+    kpoints_data.wk_par = wk_par
+    kpoints_data.ivr_par3D = ivr_par3D
+    kpoints_data.wr_par = wr_par
+    memory_tracker.register_section(
+        "kpoints", kpoints_data.memory_usage, is_allocated=True
     )
 
     print(memory_tracker.report(include_real_memory=True))
