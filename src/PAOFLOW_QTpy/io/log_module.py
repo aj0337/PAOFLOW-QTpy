@@ -17,7 +17,7 @@ logger.addHandler(file_handler)
 
 # Global variables
 debug_mode = True  # Assuming this is set somewhere in your application
-alloc = True  # Assuming this is set somewhere in your application
+allocated = True  # Assuming this is set somewhere in your application
 stack = []
 stack_maxdim = 100  # Define the maximum stack size
 stack_index = 0
@@ -32,7 +32,7 @@ def log_push(name):
     global stack, stack_index
 
     # Check debug mode and allocation status
-    if not debug_mode or not alloc:
+    if not debug_mode or not allocated:
         return
 
     # Update stack index and check bounds

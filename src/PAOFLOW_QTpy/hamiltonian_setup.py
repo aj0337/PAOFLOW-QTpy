@@ -50,7 +50,7 @@ def hamiltonian_setup(
     ie_bl = ie_buff if ie_buff is not None else 1
 
     for name, block in blc_blocks.items():
-        if not block.alloc:
+        if not block.allocated:
             continue
 
         if "00L" in name or "01L" in name:
