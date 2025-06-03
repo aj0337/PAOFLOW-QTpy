@@ -1,5 +1,5 @@
 from typing import Literal
-from operator_blc import OperatorBlock
+from PAOFLOW_QTpy.operator_blc import OperatorBlock
 
 
 class HamiltonianSystem:
@@ -42,7 +42,7 @@ class HamiltonianSystem:
         self.shift_R = 0.0
         self.shift_corr = 0.0
 
-        self.alloc = False
+        self.allocated = False
         self.dimx = max(dimL, dimC, dimR)
         self.dimx_lead = max(dimL, dimR)
 
@@ -58,7 +58,7 @@ class HamiltonianSystem:
         """
         Allocate memory for all matrix blocks. Raises RuntimeError if already allocated or invalid dimensions.
         """
-        if self.alloc:
+        if self.allocated:
             raise RuntimeError("Hamiltonian blocks already allocated.")
         if min(self.dimL, self.dimC, self.dimR, self.nkpts_par) <= 0:
             raise ValueError("Invalid dimensions for Hamiltonian allocation.")
@@ -71,13 +71,13 @@ class HamiltonianSystem:
         self.blc_LC.allocate(self.dimL, self.dimC, self.nkpts_par)
         self.blc_CR.allocate(self.dimC, self.dimR, self.nkpts_par)
 
-        self.alloc = True
+        self.allocated = True
 
     def deallocate(self) -> None:
         """
         Deallocate all matrix blocks if currently allocated.
         """
-        if not self.alloc:
+        if not self.allocated:
             return
 
         self.blc_00L.deallocate()
@@ -88,7 +88,7 @@ class HamiltonianSystem:
         self.blc_LC.deallocate()
         self.blc_CR.deallocate()
 
-        self.alloc = False
+        self.allocated = False
 
     def memusage(self, memtype: Literal["ham", "corr", "all"] = "all") -> float:
         """
@@ -105,19 +105,19 @@ class HamiltonianSystem:
             Estimated memory in megabytes.
         """
         usage = 0.0
-        if self.blc_00L.alloc:
+        if self.blc_00L.allocated:
             usage += self.blc_00L.memusage(memtype)
-        if self.blc_01L.alloc:
+        if self.blc_01L.allocated:
             usage += self.blc_01L.memusage(memtype)
-        if self.blc_00R.alloc:
+        if self.blc_00R.allocated:
             usage += self.blc_00R.memusage(memtype)
-        if self.blc_01R.alloc:
+        if self.blc_01R.allocated:
             usage += self.blc_01R.memusage(memtype)
-        if self.blc_00C.alloc:
+        if self.blc_00C.allocated:
             usage += self.blc_00C.memusage(memtype)
-        if self.blc_LC.alloc:
+        if self.blc_LC.allocated:
             usage += self.blc_LC.memusage(memtype)
-        if self.blc_CR.alloc:
+        if self.blc_CR.allocated:
             usage += self.blc_CR.memusage(memtype)
 
         return usage

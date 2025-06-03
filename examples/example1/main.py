@@ -4,12 +4,16 @@ from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.get_input_params import load_summary_data_from_yaml
 from PAOFLOW_QTpy.kpoints import initialize_kpoints, initialize_r_vectors
-from mpi4py import MPI
 
 from PAOFLOW_QTpy.smearing_base import smearing_func
 from PAOFLOW_QTpy.smearing_T import SmearingData
 from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
+from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
+
+from mpi4py import MPI
+
+comm = MPI.COMM_WORLD
 
 
 def main():
@@ -22,7 +26,6 @@ def main():
     atmproj_thr = data_dict["atmproj_thr"]
     do_orthoovp = data_dict["do_orthoovp"]
 
-    comm = MPI.COMM_WORLD
     data_dict["nproc"] = comm.Get_size()
 
     startup("conductor.py")
@@ -60,7 +63,7 @@ def main():
             "wr_par": wr_par,
         }
     )
-
+    data_dict["nkpts_par"] = 1  # TODO: Fix this hardcoded value later
     print_summary(data_dict)
 
     memory_tracker = MemoryTracker()
@@ -80,6 +83,23 @@ def main():
     kpoints_data.wr_par = wr_par
     memory_tracker.register_section(
         "kpoints", kpoints_data.memory_usage, is_allocated=True
+    )
+
+    dimL = data_dict["dimL"]
+    dimC = data_dict["dimC"]
+    dimR = data_dict["dimR"]
+    nkpts_par = data_dict["nkpts_par"]
+    ham_sys = HamiltonianSystem(dimL, dimC, dimR, nkpts_par)
+    ham_sys.allocate()
+    memory_tracker.register_section(
+        "hamiltonian data",
+        lambda: ham_sys.memusage("ham"),
+        is_allocated=ham_sys.allocated,
+    )
+    memory_tracker.register_section(
+        "correlation data",
+        lambda: ham_sys.memusage("corr"),
+        is_allocated=ham_sys.allocated,
     )
 
     print(memory_tracker.report(include_real_memory=True))

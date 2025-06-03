@@ -53,24 +53,16 @@ class MemoryTracker:
                 print(f"{section:>24}: {usage:15.3f} MB", file=output)
 
         print("", file=output)  # Equivalent to WRITE(iunit, "()")
-        print(f"{'Total alloc. Memory':>24}: {memsum:15.3f} MB", file=output)
+        print(f"{'Total allocated. Memory':>24}: {memsum:15.3f} MB", file=output)
 
         if include_real_memory:
             process = psutil.Process()
             tmem = process.memory_info().rss / 1024.0 / 1024.0  # Convert bytes to MB
-            print(f"{'Real alloc. Memory':>24}: {tmem:15.3f} MB", file=output)
+            print(f"{'Real allocated. Memory':>24}: {tmem:15.3f} MB", file=output)
 
         print("  </MEMORY_USAGE>\n", file=output)
 
         return output.getvalue()
-
-
-def kpoints_memusage() -> float:
-    """
-    Return memory used by the kpoints module in MB.
-    Placeholder for actual logic.
-    """
-    return 0.0
 
 
 def hamiltonian_memusage(mode: str) -> float:
