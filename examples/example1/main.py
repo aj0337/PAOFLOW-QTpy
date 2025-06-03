@@ -10,6 +10,7 @@ from PAOFLOW_QTpy.smearing_T import SmearingData
 from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
+from PAOFLOW_QTpy.workspace import Workspace
 
 from mpi4py import MPI
 
@@ -100,6 +101,21 @@ def main():
         "correlation data",
         lambda: ham_sys.memusage("corr"),
         is_allocated=ham_sys.allocated,
+    )
+
+    workspace = Workspace()
+    workspace.allocate(
+        dimL=data_dict["dimL"],
+        dimC=data_dict["dimC"],
+        dimR=data_dict["dimR"],
+        dimx_lead=max(data_dict["dimL"], data_dict["dimR"]),
+        nkpts_par=data_dict["nkpts_par"],
+        nrtot_par=data_dict["nrtot_par"],
+        write_lead_sgm=data_dict.get("write_lead_sgm", False),
+        write_gf=data_dict.get("write_gf", False),
+    )
+    memory_tracker.register_section(
+        "workspace", workspace.memusage, is_allocated=workspace.allocated
     )
 
     print(memory_tracker.report(include_real_memory=True))
