@@ -243,6 +243,7 @@ def write_internal_format_files(
 
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
+    bvec = bvec * 2 * np.pi / lattice_data["alat"]
     spin_component = all
     shift = (0.0, 0.0, 0.0)
     nspin, nrtot, dim, _ = Hk.shape
