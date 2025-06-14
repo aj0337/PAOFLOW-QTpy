@@ -243,7 +243,8 @@ def write_internal_format_files(
 
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
-
+    spin_component = all
+    shift = (0.0, 0.0, 0.0)
     nspin, nrtot, dim, _ = Hk.shape
     nkpts = kpts.shape[0]
     nk = (1, 1, 1)
@@ -261,10 +262,10 @@ def write_internal_format_files(
 
         # DATA tag with attributes
         f.write(
-            f'    <DATA dimwann="{dim}" nkpts="{nkpts}" nspin="{nspin}" spin_component="all" '
+            f'    <DATA dimwann="{dim}" nkpts="{nkpts}" nspin="{nspin}" spin_component="{spin_component}" '
         )
         f.write(
-            f'nk="{nk[0]} {nk[1]} {nk[2]}" shift="0 0 0" nrtot="{nrtot}" nr="{nr[0]} {nr[1]} {nr[2]}" '
+            f'nk="{nk[0]} {nk[1]} {nk[2]}" shift="{shift}" nrtot="{nrtot}" nr="{nr[0]} {nr[1]} {nr[2]}" '
         )
         f.write(f"have_overlap=\"{'T' if have_overlap else 'F'}\"\n")
         f.write(f'fermi_energy="{fermi_energy:.15E}"/>\n')
@@ -318,7 +319,7 @@ def write_internal_format_files(
             f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
             flat = Hk[0, ir].flatten()
             for z in flat:
-                f.write(f" {z.real:.15E},{z.imag:.15E}\n")
+                f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
             f.write(f"      </{tag}>\n")
 
             if have_overlap:
@@ -326,7 +327,7 @@ def write_internal_format_files(
                 f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
                 flat = Sk[0, ir].flatten()
                 for z in flat:
-                    f.write(f" {z.real:.15E},{z.imag:.15E}\n")
+                    f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
                 f.write(f"      </{tag}>\n")
 
         f.write("    </RHAM>\n")
