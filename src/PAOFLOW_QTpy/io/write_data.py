@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict
 
 
-import xml.etree.ElementTree as ET
 import logging
 
 logger = logging.getLogger(__name__)
@@ -200,10 +199,44 @@ def write_internal_format_files(
     lattice_data: Dict[str, np.ndarray],
     do_orthoovp: bool,
 ) -> None:
+    """
+    Write Hamiltonian and optional overlap matrices in a format that matches the legacy IOTK-style .ham file structure.
+
+    The output includes:
+    - Dimensional and symmetry metadata in a DATA tag
+    - Real-space and reciprocal lattice vectors
+    - K-point list and weights
+    - R-vectors and their weights
+    - Hamiltonian matrix blocks (VR.#)
+    - Overlap matrix blocks (OVERLAP.#), if enabled
+
+    Parameters
+    ----------
+    `output_prefix` : str
+        Prefix for the output file (e.g., 'al5_bulk' → 'al5_bulk.ham').
+    `hk_data` : Dict[str, np.ndarray]
+        Dictionary containing:
+            - "Hk": shape (nspin, nrtot, dim, dim), Hamiltonian matrices
+            - "S" (optional): shape (nspin, nrtot, dim, dim), Overlap matrices
+            - "ivr": shape (nrtot, 3), R-vectors
+            - "wr": shape (nrtot,), R-vector weights
+    `proj_data` : Dict[str, np.ndarray]
+        Dictionary containing:
+            - "kpts": shape (nkpts, 3), list of k-points
+            - "wk": shape (nkpts,), k-point weights
+    `lattice_data` : Dict[str, np.ndarray]
+        Dictionary containing:
+            - "avec": shape (3, 3), direct lattice vectors
+            - "bvec": shape (3, 3), reciprocal lattice vectors
+    `do_orthoovp` : bool
+        If False and overlap matrices are provided, overlap blocks will be written to the output.
+    """
     ham_file = output_prefix + ".ham"
 
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
+    ivr = hk_data["ivr"]
+    wr = hk_data["wr"]
 
     kpts = proj_data["kpts"]
     wk = proj_data["wk"]
@@ -211,46 +244,91 @@ def write_internal_format_files(
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
 
-    ivr = hk_data["ivr"]
-    wr = hk_data["wr"]
+    nspin, nrtot, dim, _ = Hk.shape
+    nkpts = kpts.shape[0]
+    nk = (1, 1, 1)
+    nr = tuple(np.max(np.abs(ivr), axis=0))
+    have_overlap = Sk is not None and not do_orthoovp
+    fermi_energy = 0.0
 
-    nspin = Hk.shape[0]
-    nrtot = ivr.shape[0]
+    with open(ham_file, "w") as f:
+        f.write('<?xml version="1.0"?>\n')
+        f.write('<?iotk version="1.2.0"?>\n')
+        f.write('<?iotk file_version="1.0"?>\n')
+        f.write('<?iotk binary="F"?>\n')
+        f.write("<Root>\n")
+        f.write("  <HAMILTONIAN>\n")
 
-    root = ET.Element("HAMILTONIAN")
+        # DATA tag with attributes
+        f.write(
+            f'    <DATA dimwann="{dim}" nkpts="{nkpts}" nspin="{nspin}" spin_component="all" '
+        )
+        f.write(
+            f'nk="{nk[0]} {nk[1]} {nk[2]}" shift="0 0 0" nrtot="{nrtot}" nr="{nr[0]} {nr[1]} {nr[2]}" '
+        )
+        f.write(f"have_overlap=\"{'T' if have_overlap else 'F'}\"\n")
+        f.write(f'fermi_energy="{fermi_energy:.15E}"/>\n')
 
-    def mat_to_text(matrix: np.ndarray) -> str:
-        flat = matrix.flatten()
-        if np.iscomplexobj(matrix):
-            return "\n" + " ".join(f"{z.real:.12e} {z.imag:.12e}" for z in flat) + "\n"
-        else:
-            return "\n" + " ".join(f"{x:.12e}" for x in flat) + "\n"
+        # DIRECT LATTICE
+        f.write('    <DIRECT_LATTICE type="real" size="9" columns="3" units="bohr">\n')
+        for row in avec.T:
+            f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
+        f.write("    </DIRECT_LATTICE>\n")
 
-    def add_array(parent, tag, array, attrib=None):
-        elem = ET.SubElement(parent, tag)
-        if attrib:
-            for key, val in attrib.items():
-                elem.set(key, val)
-        elem.text = mat_to_text(array)
-        return elem
+        # RECIPROCAL LATTICE
+        f.write(
+            '    <RECIPROCAL_LATTICE type="real" size="9" columns="3" units="bohr^-1">\n'
+        )
+        for row in bvec.T:
+            f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
+        f.write("    </RECIPROCAL_LATTICE>\n")
 
-    add_array(root, "DIRECT_LATTICE", avec.T, {"units": "bohr"})
-    add_array(root, "RECIPROCAL_LATTICE", bvec.T, {"units": "bohr^-1"})
-    add_array(root, "VKPT", kpts.T, {"units": "crystal"})
-    add_array(root, "WK", wk)
-    add_array(root, "IVR", ivr)
-    add_array(root, "WR", wr)
+        # VKPT
+        f.write(
+            f'    <VKPT type="real" size="{3*nkpts}" columns="3" units="crystal">\n'
+        )
+        for row in kpts:
+            f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
+        f.write("    </VKPT>\n")
 
-    for isp in range(nspin):
-        spin_tag = ET.SubElement(root, f"SPIN{iotk_index(isp + 1)}")
-        rham = ET.SubElement(spin_tag, "RHAM")
+        # WK
+        f.write(f'    <WK type="real" size="{nkpts}">\n')
+        for w in wk:
+            f.write(f" {w:.15E}\n")
+        f.write("    </WK>\n")
+
+        # IVR
+        f.write(
+            f'    <IVR type="integer" size="{3*nrtot}" columns="3" units="crystal">\n'
+        )
+        for row in ivr:
+            f.write(" {:10d}{:10d}{:10d} \n".format(*row))
+        f.write("    </IVR>\n")
+
+        # WR
+        f.write(f'    <WR type="real" size="{nrtot}">\n')
+        for w in wr:
+            f.write(f" {w:.15E}\n")
+        f.write("    </WR>\n")
+
+        # RHAM section
+        f.write("    <RHAM>\n")
         for ir in range(nrtot):
-            rtag = f"VR{iotk_index(ir + 1)}"
-            add_array(rham, rtag, Hk[isp, 0])
+            tag = f"VR.{ir+1}"
+            f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
+            flat = Hk[0, ir].flatten()
+            for z in flat:
+                f.write(f" {z.real:.15E},{z.imag:.15E}\n")
+            f.write(f"      </{tag}>\n")
 
-            if not do_orthoovp and Sk is not None:
-                stag = f"OVERLAP{iotk_index(ir + 1)}"
-                add_array(rham, stag, Sk[:, :, 0, isp])
+            if have_overlap:
+                tag = f"OVERLAP.{ir+1}"
+                f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
+                flat = Sk[0, ir].flatten()
+                for z in flat:
+                    f.write(f" {z.real:.15E},{z.imag:.15E}\n")
+                f.write(f"      </{tag}>\n")
 
-    tree = ET.ElementTree(root)
-    tree.write(ham_file, encoding="utf-8", xml_declaration=True)
+        f.write("    </RHAM>\n")
+        f.write("  </HAMILTONIAN>\n")
+        f.write("</Root>\n")
