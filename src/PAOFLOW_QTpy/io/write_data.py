@@ -250,6 +250,8 @@ def write_internal_format_files(
     vkpts = kpts * 2 * np.pi / lattice_data["alat"]
     vkpts_crystal = cartesian_to_crystal(vkpts, bvec)  # convert to crystal coordinates
     wk = proj_data["wk"]
+    wk_sum = np.sum(wk)
+    wk = wk / wk_sum
 
     spin_component = all
     shift = (0.0, 0.0, 0.0)
