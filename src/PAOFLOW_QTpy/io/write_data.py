@@ -6,6 +6,8 @@ from typing import Dict
 
 import logging
 
+from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
+
 logger = logging.getLogger(__name__)
 
 
@@ -238,16 +240,21 @@ def write_internal_format_files(
     ivr = hk_data["ivr"]
     wr = hk_data["wr"]
 
-    kpts = proj_data["kpts"]
-    wk = proj_data["wk"]
-
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
-    bvec = bvec * 2 * np.pi / lattice_data["alat"]
+    bvec = (
+        bvec * 2 * np.pi / lattice_data["alat"]
+    )  # convert to reciprocal lattice vectors in bohr^-1
+
+    kpts = proj_data["kpts"]
+    vkpts = kpts * 2 * np.pi / lattice_data["alat"]
+    vkpts_crystal = cartesian_to_crystal(vkpts, bvec)  # convert to crystal coordinates
+    wk = proj_data["wk"]
+
     spin_component = all
     shift = (0.0, 0.0, 0.0)
     nspin, nrtot, dim, _ = Hk.shape
-    nkpts = kpts.shape[0]
+    nkpts = kpts.shape[1]
     nk = (1, 1, 1)
     nr = tuple(np.max(np.abs(ivr), axis=0))
     have_overlap = Sk is not None and not do_orthoovp
@@ -289,10 +296,11 @@ def write_internal_format_files(
         f.write(
             f'    <VKPT type="real" size="{3*nkpts}" columns="3" units="crystal">\n'
         )
-        for row in kpts:
-            f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
+        for i in range(vkpts_crystal.shape[1]):
+            f.write(
+                " " + "  ".join(f"{vkpts_crystal[j, i]:.15E}" for j in range(3)) + "\n"
+            )
         f.write("    </VKPT>\n")
-
         # WK
         f.write(f'    <WK type="real" size="{nkpts}">\n')
         for w in wk:
