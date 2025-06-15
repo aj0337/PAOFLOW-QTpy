@@ -20,7 +20,7 @@ comm = MPI.COMM_WORLD
 def main():
     yaml_file = "./conductor.yaml"
     data_dict = load_summary_data_from_yaml(yaml_file)
-    file_proj = data_dict["datafile_C"]
+    datafile_C = data_dict["datafile_C"]
     work_dir = "./al5.save"
     postfix = data_dict["postfix"]
     atmproj_sh = data_dict["atmproj_sh"]
@@ -33,7 +33,7 @@ def main():
     write_header("Conductor Initialization")
 
     parse_atomic_proj(
-        file_proj=file_proj,
+        file_proj=datafile_C,
         work_dir=work_dir,
         postfix=postfix,
         atmproj_sh=atmproj_sh,
