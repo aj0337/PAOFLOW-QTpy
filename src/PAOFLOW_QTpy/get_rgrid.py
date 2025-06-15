@@ -39,6 +39,7 @@ def grids_get_rgrid(
     This ensures the sum rule is compatible with Fourier transforms over the Brillouin zone.
     """
     nr1, nr2, nr3 = mesh_dims
+    print("nr1, nr2, nr3:", nr1, nr2, nr3)
     if any(n <= 0 for n in (nr1, nr2, nr3)):
         raise ValueError("Mesh dimensions must be strictly positive.")
 
@@ -49,9 +50,9 @@ def grids_get_rgrid(
         for j in range(nr2):
             for i in range(nr1):
                 r = (
-                    i - (nr1 + 1) // 2,
-                    j - (nr2 + 1) // 2,
-                    k - (nr3 + 1) // 2,
+                    i - (nr1) // 2,
+                    j - (nr2) // 2,
+                    k - (nr3) // 2,
                 )
                 r_grid.append(r)
                 weights.append(1.0)
