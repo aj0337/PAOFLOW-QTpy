@@ -2,6 +2,54 @@ import numpy as np
 from typing import Tuple, Optional
 
 
+def kpoints_imask(ivect: Tuple[int, int], init: int, transport_dir: int) -> np.ndarray:
+    """
+    Embed a 2D vector into a 3D space based on transport direction.
+
+    Parameters
+    ----------
+    `ivect` : Tuple[int, int]
+        Two integers representing a 2D vector (e.g., number of grid points or shifts)
+        in directions perpendicular to the transport direction.
+    `init` : int
+        Value to assign to the transport direction index in the 3D output vector.
+        This is typically 1 for grid sizes and 0 for shifts.
+    `transport_dir` : int
+        Transport direction axis (1 = x, 2 = y, 3 = z). This axis receives the `init` value.
+
+    Returns
+    -------
+    `mask` : (3,) ndarray
+        A 3D integer vector where the input 2D vector is placed in the two non-transport
+        directions, and the transport direction is set to `init`.
+
+    Notes
+    -----
+    This function is used to convert 2D grid descriptors (e.g., mesh size or shift values)
+    into full 3D vectors, placing the values in the correct position depending on the
+    chosen transport direction.
+
+    The mapping rules are:
+        - If transport_dir == 1 (x): output = [init, ivect[0], ivect[1]]
+        - If transport_dir == 2 (y): output = [ivect[0], init, ivect[1]]
+        - If transport_dir == 3 (z): output = [ivect[0], ivect[1], init]
+
+    This allows uniform generation of 3D k-point and R-vector grids perpendicular to the
+    direction of transport.
+    """
+    imask = np.full(3, init, dtype=int)
+    if transport_dir == 1:
+        imask[1:] = ivect
+    elif transport_dir == 2:
+        imask[0] = ivect[0]
+        imask[2] = ivect[1]
+    elif transport_dir == 3:
+        imask[:2] = ivect
+    else:
+        raise ValueError(f"Invalid transport direction: {transport_dir}")
+    return imask
+
+
 def kpoints_rmask(rvect: np.ndarray, transport_dir: int) -> np.ndarray:
     """
     Expand a 2D reciprocal vector `rvect` to 3D according to the transport direction.
