@@ -1,12 +1,12 @@
 import numpy as np
-from typing import Tuple, Literal
+from typing import Optional, Tuple, Literal
 
 from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
 
 
 def get_monkhorst_pack_grid(
     kpts: np.ndarray,
-    bvec: np.ndarray,
+    bvec: Optional[np.ndarray] = None,
     coordinate: Literal["crystal", "cartesian"] = "crystal",
     tol: float = 1e-6,
 ) -> Tuple[np.ndarray, np.ndarray, bool]:
@@ -49,6 +49,7 @@ def get_monkhorst_pack_grid(
         kpts = cartesian_to_crystal(kpts, bvec)
 
     nkpts = kpts.shape[1]
+    print(f"nkpts: {nkpts}")
     nk = np.zeros(3, dtype=int)
     shift = np.ones(3, dtype=int)
 
@@ -81,6 +82,7 @@ def get_monkhorst_pack_grid(
         return np.array(grid).T
 
     kpt_mp = generate_mp_grid(nk, shift)
+    print(kpt_mp)
     matched = 0
     for col in kpt_loc.T:
         if np.any(np.all(np.abs(kpt_mp.T - col) < tol, axis=1)):
