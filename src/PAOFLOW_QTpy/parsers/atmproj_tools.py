@@ -159,6 +159,8 @@ def parse_atomic_proj(
     hk_data["ivr"] = ivr
     hk_data["wr"] = wr
     hk_data["vr"] = vr
+    hk_data["nk"] = nk
+    hk_data["nr"] = nr
 
     if write_intermediate:
         output_prefix = os.path.join(work_dir, prefix + postfix)

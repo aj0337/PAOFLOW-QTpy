@@ -249,13 +249,13 @@ def write_internal_format_files(
     wk_sum = np.sum(wk)
     wk = wk / wk_sum
 
-    spin_component = all
+    spin_component = "all"
     shift = (0.0, 0.0, 0.0)
     nspin, _, dim, _ = Hk.shape
     nkpts = kpts.shape[1]
     nrtot = ivr.shape[0]
-    nk = (1, 1, 1)
-    nr = tuple(np.max(np.abs(ivr), axis=0))
+    nk = hk_data["nk"]
+    nr = hk_data["nr"]
     have_overlap = Sk is not None and not do_orthoovp
     fermi_energy = 0.0
 
