@@ -6,7 +6,6 @@ from typing import Dict
 
 import logging
 
-from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
 
 logger = logging.getLogger(__name__)
 
@@ -242,13 +241,10 @@ def write_internal_format_files(
 
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
-    bvec = (
-        bvec * 2 * np.pi / lattice_data["alat"]
-    )  # convert to reciprocal lattice vectors in bohr^-1
 
     kpts = proj_data["kpts"]
-    vkpts = kpts * 2 * np.pi / lattice_data["alat"]
-    vkpts_crystal = cartesian_to_crystal(vkpts, bvec)  # convert to crystal coordinates
+    vkpts_crystal = proj_data["vkpts_crystal"]
+
     wk = proj_data["wk"]
     wk_sum = np.sum(wk)
     wk = wk / wk_sum

@@ -48,6 +48,7 @@ def qexml_read_cell(file_path: str) -> Dict[str, Any]:
 
     avec = np.column_stack((a1, a2, a3))
     bvec = np.column_stack((b1, b2, b3))
+    bvec = bvec * 2 * np.pi / alat  # convert to reciprocal lattice vectors in bohr^-1
 
     return {
         "alat": alat,
