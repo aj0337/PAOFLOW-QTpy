@@ -1,5 +1,5 @@
 import numpy as np
-from green import compute_lead_self_energy
+from PAOFLOW_QTpy.green import compute_lead_self_energy
 
 
 def build_self_energies_from_blocks(
@@ -16,7 +16,7 @@ def build_self_energies_from_blocks(
     fail_counter: dict | None = None,
     fail_limit: int = 10,
     verbose: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, int, int]:
     """
     Construct lead self-energies Σ_R and Σ_L using Green's function recursion.
 
@@ -55,8 +55,12 @@ def build_self_energies_from_blocks(
         Self-energy from the right lead.
     `sigma_L` : (nC, nC) complex ndarray
         Self-energy from the left lead.
+    `niter_R` : int
+        Iteration count for right lead.
+    `niter_L` : int
+        Iteration count for left lead.
     """
-    gR = compute_lead_self_energy(
+    gR, niter_R = compute_lead_self_energy(
         blc_00R,
         np.eye(blc_00R.shape[0]),
         blc_01R,
@@ -71,7 +75,7 @@ def build_self_energies_from_blocks(
     sigma_R = blc_CR @ gR @ blc_CR.conj().T
 
     if leads_are_identical:
-        gL = compute_lead_self_energy(
+        gL, niter_L = compute_lead_self_energy(
             blc_00R,
             np.eye(blc_00R.shape[0]),
             blc_01R,
@@ -84,7 +88,7 @@ def build_self_energies_from_blocks(
             verbose=verbose,
         )
     else:
-        gL = compute_lead_self_energy(
+        gL, niter_L = compute_lead_self_energy(
             blc_00L,
             np.eye(blc_00L.shape[0]),
             blc_01L,
@@ -96,6 +100,7 @@ def build_self_energies_from_blocks(
             fail_limit=fail_limit,
             verbose=verbose,
         )
+
     sigma_L = blc_LC.conj().T @ gL @ blc_LC
 
-    return sigma_R, sigma_L
+    return sigma_R, sigma_L, niter_R, niter_L

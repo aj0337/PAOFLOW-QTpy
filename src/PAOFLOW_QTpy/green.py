@@ -1,8 +1,8 @@
 from typing import Literal, Optional
 
 import numpy as np
-from gzero_maker import compute_non_interacting_gf
-from transfer import compute_surface_transfer_matrices
+from PAOFLOW_QTpy.gzero_maker import compute_non_interacting_gf
+from PAOFLOW_QTpy.transfer import compute_surface_transfer_matrices
 
 
 def compute_surface_green_function(
@@ -86,7 +86,7 @@ def compute_lead_self_energy(
     fail_counter: dict = None,
     fail_limit: int = 10,
     verbose: bool = False,
-) -> np.ndarray:
+) -> tuple[np.ndarray, int]:
     """
     Compute the self-energy matrix for a semi-infinite lead using surface Green's function.
 
@@ -117,6 +117,8 @@ def compute_lead_self_energy(
     -------
     `sigma` : np.ndarray
         Self-energy matrix of the lead (same shape as h_eff).
+    `niter` : int
+        Number of iterations used in the Sancho-Rubio recursion.
 
     Notes
     -----
@@ -137,7 +139,7 @@ def compute_lead_self_energy(
 
     """
 
-    tot, tott, _ = compute_surface_transfer_matrices(
+    tot, tott, niter = compute_surface_transfer_matrices(
         h_eff,
         s_eff,
         h_coupling,
@@ -160,7 +162,7 @@ def compute_lead_self_energy(
     else:
         sigma = h_coupling @ g_surf @ h_coupling.conj().T
 
-    return sigma
+    return sigma, niter
 
 
 def compute_conductor_green_function(
