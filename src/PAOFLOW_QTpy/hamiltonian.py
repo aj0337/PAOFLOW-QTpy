@@ -121,3 +121,15 @@ class HamiltonianSystem:
             usage += self.blc_CR.memusage(memtype)
 
         return usage
+
+    @property
+    def blocks(self) -> dict[str, OperatorBlock]:
+        return {
+            "blc_00L": self.blc_00L,
+            "blc_01L": self.blc_01L,
+            "blc_00R": self.blc_00R,
+            "blc_01R": self.blc_01R,
+            "blc_00C": self.blc_00C,
+            "blc_LC": self.blc_LC,
+            "blc_CR": self.blc_CR,
+        }
