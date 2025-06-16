@@ -250,7 +250,7 @@ def write_internal_format_files(
     wk = wk / wk_sum
 
     spin_component = "all"
-    shift = (0.0, 0.0, 0.0)
+    shift = np.zeros(3, dtype=float)  # No shift in k-point grid for crystal coordinates
     nspin, _, dim, _ = Hk.shape
     nkpts = kpts.shape[1]
     nrtot = ivr.shape[0]
