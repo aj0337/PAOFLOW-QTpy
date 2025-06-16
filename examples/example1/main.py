@@ -1,9 +1,15 @@
+import os
 from PAOFLOW_QTpy.io.startup import startup
 from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.get_input_params import load_summary_data_from_yaml
-from PAOFLOW_QTpy.kpoints import initialize_kpoints, initialize_r_vectors
+from PAOFLOW_QTpy.kpoints import (
+    initialize_meshsize,
+    initialize_kpoints,
+    initialize_r_vectors,
+    kpoints_mask,
+)
 
 from PAOFLOW_QTpy.smearing_base import smearing_func
 from PAOFLOW_QTpy.smearing_T import SmearingData
@@ -21,8 +27,8 @@ def main():
     yaml_file = "./conductor.yaml"
     data_dict = load_summary_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
+    prefix = os.path.basename(datafile_C)
     work_dir = "./al5.save"
-    postfix = data_dict["postfix"]
     atmproj_sh = data_dict["atmproj_sh"]
     atmproj_thr = data_dict["atmproj_thr"]
     do_orthoovp = data_dict["do_orthoovp"]
@@ -32,23 +38,30 @@ def main():
     startup("conductor.py")
     write_header("Conductor Initialization")
 
-    parse_atomic_proj(
+    hk_data = parse_atomic_proj(
         file_proj=datafile_C,
         work_dir=work_dir,
-        postfix=postfix,
+        prefix=prefix,
         atmproj_sh=atmproj_sh,
         atmproj_thr=atmproj_thr,
         do_orthoovp=do_orthoovp,
         write_intermediate=True,
     )
 
-    data_dict["nr_par"] = [1, 1]  # TODO: Compute dynamically if possible
+    data_dict["nk_par"], data_dict["nr_par"] = initialize_meshsize(
+        nr_full=hk_data["nr"], transport_dir=data_dict["transport_dir"]
+    )
+
+    s_par = data_dict["s"][:2]
+    nk_par3d = kpoints_mask(data_dict["nk_par"], 1, data_dict["transport_dir"])
+    s_par3d = kpoints_mask(s_par, 0, data_dict["transport_dir"])
+    nr_par3d = kpoints_mask(data_dict["nr_par"], 1, data_dict["transport_dir"])
 
     vkpt_par3D, wk_par = initialize_kpoints(
-        data_dict["nk"],
-        data_dict["s"],
-        data_dict["transport_dir"],
-        data_dict["use_symm"],
+        data_dict["nk_par"],
+        s_par=s_par,
+        transport_dir=data_dict["transport_dir"],
+        use_symm=data_dict["use_symm"],
     )
     ivr_par3D, wr_par = initialize_r_vectors(
         data_dict["nr_par"], data_dict["transport_dir"]
@@ -62,6 +75,9 @@ def main():
             "wk_par": wk_par,
             "ivr_par3D": ivr_par3D.T,
             "wr_par": wr_par,
+            "nk_par3d": nk_par3d,
+            "s_par3d": s_par3d,
+            "nr_par3d": nr_par3d,
         }
     )
     data_dict["nkpts_par"] = 1  # TODO: Fix this hardcoded value later

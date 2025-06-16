@@ -1,95 +1,69 @@
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 
-def kpoints_imask(ivect: Tuple[int, int], init: int, transport_dir: int) -> np.ndarray:
+def kpoints_mask(
+    vect: Union[Tuple[int, int], np.ndarray],
+    init: Union[int, float],
+    transport_dir: int,
+) -> np.ndarray:
     """
-    Embed a 2D vector into a 3D space based on transport direction.
+    Embed a 2D vector into 3D space by inserting a value along the transport direction.
 
     Parameters
     ----------
-    `ivect` : Tuple[int, int]
-        Two integers representing a 2D vector (e.g., number of grid points or shifts)
-        in directions perpendicular to the transport direction.
-    `init` : int
-        Value to assign to the transport direction index in the 3D output vector.
-        This is typically 1 for grid sizes and 0 for shifts.
+    `vect` : Tuple[int, int] or (2,) ndarray
+        A 2D vector to embed into 3D. Can represent:
+        - Integer grid descriptors like mesh sizes or shift values (e.g., `nk`, `s`, `nr`)
+        - Floating-point physical vectors like k-points or R-vectors in reciprocal space
+    `init` : int or float
+        Value to insert along the transport direction:
+        - Use `1` for mesh dimensions
+        - Use `0` for shift vectors or physical coordinates
     `transport_dir` : int
-        Transport direction axis (1 = x, 2 = y, 3 = z). This axis receives the `init` value.
+        Direction of transport: 1 = x, 2 = y, 3 = z.
+        This direction will receive the `init` value, and `vect` will fill the two orthogonal directions.
 
     Returns
     -------
-    `mask` : (3,) ndarray
-        A 3D integer vector where the input 2D vector is placed in the two non-transport
-        directions, and the transport direction is set to `init`.
+    `out` : (3,) ndarray
+        A 3D vector with `init` inserted along the transport direction,
+        and the 2D input `vect` placed in the remaining two directions.
 
     Notes
     -----
-    This function is used to convert 2D grid descriptors (e.g., mesh size or shift values)
-    into full 3D vectors, placing the values in the correct position depending on the
-    chosen transport direction.
+    This function is a general-purpose utility for constructing 3D vectors that respect
+    the geometry of transport problems, where a 2D grid or vector lies perpendicular
+    to the specified transport direction.
 
-    The mapping rules are:
-        - If transport_dir == 1 (x): output = [init, ivect[0], ivect[1]]
-        - If transport_dir == 2 (y): output = [ivect[0], init, ivect[1]]
-        - If transport_dir == 3 (z): output = [ivect[0], ivect[1], init]
+    It applies to both grid descriptors (like number of points or shifts) and to
+    physical vectors (like k-points or R-vectors in fractional coordinates).
 
-    This allows uniform generation of 3D k-point and R-vector grids perpendicular to the
-    direction of transport.
+    Mapping logic:
+        If `transport_dir == 1` (x-direction transport):
+            out = [init, vect[0], vect[1]]
+        If `transport_dir == 2` (y-direction transport):
+            out = [vect[0], init, vect[1]]
+        If `transport_dir == 3` (z-direction transport):
+            out = [vect[0], vect[1], init]
     """
-    imask = np.full(3, init, dtype=int)
+    vect = np.asarray(vect)
+    if vect.shape != (2,):
+        raise ValueError("`vect` must be a 2-element tuple or 1D array of shape (2,)")
+
+    out = np.full(3, init, dtype=np.result_type(vect.dtype, type(init)))
+
     if transport_dir == 1:
-        imask[1:] = ivect
+        out[1:] = vect
     elif transport_dir == 2:
-        imask[0] = ivect[0]
-        imask[2] = ivect[1]
+        out[0] = vect[0]
+        out[2] = vect[1]
     elif transport_dir == 3:
-        imask[:2] = ivect
+        out[:2] = vect
     else:
         raise ValueError(f"Invalid transport direction: {transport_dir}")
-    return imask
 
-
-def kpoints_rmask(rvect: np.ndarray, transport_dir: int) -> np.ndarray:
-    """
-    Expand a 2D reciprocal vector `rvect` to 3D according to the transport direction.
-
-    Parameters
-    ----------
-    `rvect` : (2,) ndarray
-        2D k-point or R-vector in reciprocal lattice units (fractional coordinates).
-    `transport_dir` : int
-        Direction of transport (1 for x, 2 for y, 3 for z).
-
-    Returns
-    -------
-    `rmask` : (3,) ndarray
-        Expanded 3D vector in reciprocal lattice units, with zeros in the transport direction.
-
-    Notes
-    -----
-    This function maps a 2D vector in the plane perpendicular to the transport direction
-    into a full 3D vector by inserting zeros along the transport direction.
-    For example, if the transport direction is z (3), a 2D k-point (kx, ky) is mapped to (kx, ky, 0).
-
-    Mathematically:
-        Let `rvect` = (r₁, r₂)
-        The 3D expansion is:
-            if transport_dir == 1 (x):   (0, r₁, r₂)
-            if transport_dir == 2 (y):   (r₁, 0, r₂)
-            if transport_dir == 3 (z):   (r₁, r₂, 0)
-    """
-    rmask = np.zeros(3)
-    if transport_dir == 1:
-        rmask[1:] = rvect
-    elif transport_dir == 2:
-        rmask[0] = rvect[0]
-        rmask[2] = rvect[1]
-    elif transport_dir == 3:
-        rmask[:2] = rvect
-    else:
-        raise ValueError(f"Invalid transport direction: {transport_dir}")
-    return rmask
+    return out
 
 
 def kpoints_equivalent(v1: np.ndarray, v2: np.ndarray, tol: float = 1e-6) -> bool:
@@ -123,20 +97,88 @@ def kpoints_equivalent(v1: np.ndarray, v2: np.ndarray, tol: float = 1e-6) -> boo
     return np.allclose((v1 + v2) % 1.0, 0.0, atol=tol)
 
 
+def initialize_meshsize(
+    nr_full: np.ndarray,
+    transport_dir: int,
+    nk_par: Optional[np.ndarray] = None,
+    use_safe_kmesh: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extract the 2D R-vector mesh (`nr_par`) orthogonal to the transport direction
+    and validate or infer the corresponding k-point mesh (`nk_par`).
+
+    Parameters
+    ----------
+    `nr_full` : (3,) ndarray of int
+        Full 3D R-vector mesh sizes along (x, y, z) directions.
+        For example: array([2, 2, 3])
+    `transport_dir` : int
+        Transport direction axis (1-based): 1 = x, 2 = y, 3 = z.
+    `nk_par` : Optional[(2,) ndarray of int]
+        User-specified number of k-points in the 2D plane orthogonal to transport.
+        If None or [0, 0], it will be inferred from `nr_par`.
+    `use_safe_kmesh` : bool
+        If True, enforces `nk_par[i] >= nr_par[i]` to guarantee sufficient resolution
+        for Fourier-based methods.
+
+    Returns
+    -------
+    `nk_par` : (2,) ndarray of int
+        Validated number of k-points in the orthogonal directions.
+    `nr_par` : (2,) ndarray of int
+        Number of R-vectors in directions orthogonal to transport.
+
+    Notes
+    -----
+    Example:
+        nr_full = np.array([2, 2, 3])
+        transport_dir = 3
+
+    → nr_par = array([2, 2])  # selects x and y directions
+    → nk_par = array([2, 2]) if not provided
+    """
+    if not isinstance(nr_full, np.ndarray):
+        raise TypeError("`nr_full` must be a NumPy array")
+    if nr_full.shape != (3,):
+        raise ValueError("`nr_full` must have shape (3,)")
+    if transport_dir not in (1, 2, 3):
+        raise ValueError(f"Invalid transport direction: {transport_dir}")
+
+    axes = [0, 1, 2]
+    axes.remove(transport_dir - 1)
+    nr_par = nr_full[axes]
+
+    if nk_par is None or np.all(np.asarray(nk_par) == 0):
+        nk_par = nr_par.copy()
+    else:
+        nk_par = np.asarray(nk_par, dtype=int)
+        if nk_par.shape != (2,):
+            raise ValueError("`nk_par` must have shape (2,)")
+        if np.any(nk_par < 1):
+            raise ValueError(f"`nk_par` must be ≥ 1 in both directions, got {nk_par}")
+        if use_safe_kmesh and np.any(nk_par < nr_par):
+            raise ValueError(
+                f"`nk_par` must be ≥ `nr_par` when use_safe_kmesh=True. "
+                f"Got nk_par={nk_par}, nr_par={nr_par}"
+            )
+
+    return nk_par, nr_par
+
+
 def initialize_kpoints(
-    nk_par: Tuple[int, int],
-    s_par: Tuple[int, int],
+    nk_par: np.ndarray,
+    s_par: np.ndarray,
     transport_dir: int,
     use_symm: bool = True,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate 3D k-points and weights on a uniform 2D mesh orthogonal to the transport direction.
 
     Parameters
     ----------
-    `nk_par` : Tuple[int, int]
+    `nk_par` : (2,) ndarray of int
         Number of k-points along the two non-transport directions.
-    `s_par` : Tuple[int, int]
+    `s_par` : (2,) ndarray of int
         Shifts (in fractional units) for the mesh in the two non-transport directions.
     `transport_dir` : int
         Transport direction (1 = x, 2 = y, 3 = z).
@@ -148,30 +190,29 @@ def initialize_kpoints(
     `vkpt_par3D` : (nkpts, 3) ndarray
         Generated 3D k-points in fractional coordinates.
     `wk_par` : (nkpts,) ndarray
-        Normalized weights for each k-point.
+        Normalized weights for each unique k-point.
 
     Notes
     -----
-    The k-point grid is generated as:
-        kx(i) = (i - nkx//2) / nkx + shift_x / (2 * nkx)
-        ky(j) = (j - nky//2) / nky + shift_y / (2 * nky)
-    for i in [0, nkx-1], j in [0, nky-1].
+    Example:
+        If nk_par = [2, 2], s_par = [0, 0], transport_dir = 3
 
-    If `use_symm` is True, pairs of points (k, -k) are considered equivalent under time-reversal symmetry
-    and only unique representatives are kept.
+        kx(i) = (i - 1) / 2
+        ky(j) = (j - 1) / 2
+        → yields 2×2 mesh in xy-plane, mapped to 3D with z = 0
 
-    The resulting weights are normalized such that:
-        sum(wk_par) = 1.
-
-    Mathematically:
-        For a uniform mesh in the 2D plane orthogonal to transport:
-            k = (kx, ky, 0) for transport_dir = 3
-        where the 3D extension is given by `kpoints_rmask`.
-
-    This is analogous to Monkhorst-Pack grids used in bandstructure calculations.
+    Time-reversal symmetry is enforced as:
+        k1 ≡ -k2 (mod 1) ⇒ count only one of them, with doubled weight.
     """
+    nk_par = np.asarray(nk_par, dtype=int)
+    s_par = np.asarray(s_par, dtype=int)
+
+    if nk_par.shape != (2,) or s_par.shape != (2,):
+        raise ValueError("`nk_par` and `s_par` must both be arrays of shape (2,)")
+
     mesh_x, mesh_y = nk_par
     shift_x, shift_y = s_par
+
     vkpts_2d = []
     weights = []
 
@@ -192,10 +233,10 @@ def initialize_kpoints(
                 weights.append(1.0)
 
     vkpts_2d = np.array(vkpts_2d)
-    wk_par = np.array(weights)
+    wk_par = np.array(weights, dtype=np.float64)
     wk_par /= wk_par.sum()
 
-    vkpt_par3D = np.array([kpoints_rmask(kpt, transport_dir) for kpt in vkpts_2d])
+    vkpt_par3D = np.array([kpoints_mask(kpt, 0.0, transport_dir) for kpt in vkpts_2d])
     return vkpt_par3D, wk_par
 
 

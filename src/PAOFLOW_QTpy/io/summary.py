@@ -108,10 +108,11 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
     log_rank0(f"       nkpts_par = {summary_data['nkpts_par']:>4}")
     log_rank0(f"       nrtot_par = {summary_data['nrtot_par']:>4}")
     log_rank0(f"        use_symm = {summary_data['use_symm']}")
-    nk = summary_data["nk"]
-    s = summary_data["s"]
+
+    nk_par3d = summary_data["nk_par3d"]
+    s_par3d = summary_data["s_par3d"]
     log_rank0(
-        f"\n       Parallel kpoints grid:        nk = ( {nk[0]:3} {nk[1]:3}  1 )   s = ( {s[0]:3} {s[1]:3}  0 )"
+        f"\n       Parallel kpoints grid:        nk = ( {nk_par3d[0]:3} {nk_par3d[1]:3}  {nk_par3d[2]:3} )   s = ( {s_par3d[0]:3} {s_par3d[1]:3}  {s_par3d[2]:3} )"
     )
     for i, (vkpt, weight) in enumerate(
         zip(summary_data["vkpt_par3D"].T, summary_data["wk_par"]), 1
@@ -119,8 +120,10 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
         log_rank0(
             f"       k ({i:3}) =    ( {vkpt[0]:9.5f} {vkpt[1]:9.5f} {vkpt[2]:9.5f} ),   weight = {weight:8.4f}"
         )
-    nr = summary_data["nr_par"]
-    log_rank0(f"\n       Parallel R vector grid:       nr = ( {nr[0]:3} {nr[1]:3}  1 )")
+    nr_par3d = summary_data["nr_par3d"]
+    log_rank0(
+        f"\n       Parallel R vector grid:       nr = ( {nr_par3d[0]:3} {nr_par3d[1]:3}  {nr_par3d[2]:3} )"
+    )
     for i, (ivr, weight) in enumerate(
         zip(summary_data["ivr_par3D"].T, summary_data["wr_par"]), 1
     ):
