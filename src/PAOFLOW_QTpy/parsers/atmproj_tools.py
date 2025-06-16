@@ -18,7 +18,7 @@ def parse_atomic_proj(
     file_proj: str,
     work_dir: str,
     prefix: str = "",
-    postfix: str,
+    postfix: str = "",
     atmproj_sh: float = 10.0,
     atmproj_thr: float = 0.0,
     atmproj_nbnd: Optional[int] = None,
@@ -281,7 +281,7 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     eig_section = root.find("EIGENVALUES")
     for ik, kpoint in enumerate(eig_section):
         for isp in range(nspin):
-            spin_tag = f"EIG{iotk_index(isp+1)}" if nspin > 1 else "EIG"
+            spin_tag = f"EIG{iotk_index(isp + 1)}" if nspin > 1 else "EIG"
             eig_tag = kpoint.find(spin_tag) if nspin > 1 else kpoint.find("EIG")
             eigvals[:, ik, isp] = [float(x) for x in eig_tag.text.strip().split()]
 
@@ -294,10 +294,10 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     for ik, kpoint in enumerate(projections_section):
         for isp in range(nspin):
             spin_node = (
-                kpoint.find(f"SPIN{iotk_index(isp+1)}") if nspin == 2 else kpoint
+                kpoint.find(f"SPIN{iotk_index(isp + 1)}") if nspin == 2 else kpoint
             )
             for ias in range(natomwfc):
-                tag = f"ATMWFC{iotk_index(ias+1)}"
+                tag = f"ATMWFC{iotk_index(ias + 1)}"
                 for ib in range(nbnd):
                     data = re.split(r"[\s,]+", spin_node.find(tag).text.strip())
                     real, im = float(data[2 * ib]), float(data[2 * ib + 1])
@@ -313,7 +313,7 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
         overlap = np.zeros((natomwfc, natomwfc, nkpt, nspin), dtype=np.complex128)
         for ik, kpoint in enumerate(overlap_section):
             for isp in range(nspin):
-                tag = f"OVERLAP{iotk_index(isp+1)}"
+                tag = f"OVERLAP{iotk_index(isp + 1)}"
                 data = re.split(r"[\s,]+", kpoint.find(tag).text.strip())
                 matrix = np.array(
                     [
