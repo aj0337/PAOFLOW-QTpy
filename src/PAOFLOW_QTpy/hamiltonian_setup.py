@@ -9,8 +9,8 @@ def hamiltonian_setup(
     shift_L: float,
     shift_C: float,
     shift_R: float,
-    shift_C_corr: float,
     blc_blocks: dict,
+    shift_C_corr: float = 0.0,
     ie_buff: Optional[int] = None,
 ) -> None:
     """
