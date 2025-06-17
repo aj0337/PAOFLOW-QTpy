@@ -121,7 +121,6 @@ def parse_atomic_proj(
         do_orthoovp=do_orthoovp,
     )
     log_rank0("Ends atmproj_read_ext --massive data")
-    log_rank0("Prints projectabilities")
 
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
@@ -163,12 +162,67 @@ def parse_atomic_proj(
     hk_data["nr"] = nr
 
     if write_intermediate:
-        output_prefix = os.path.join(work_dir, prefix + postfix)
+        output_dir = os.path.join(work_dir, "output")
+        os.makedirs(output_dir, exist_ok=True)
+
+        output_prefix = os.path.join(output_dir, prefix + postfix)
         write_internal_format_files(
             output_prefix, hk_data, proj_data, lattice_data, do_orthoovp
         )
 
-    log_rank0(f"{file_proj} converted from ATMPROJ to internal fmt")
+        log_rank0(f"{file_proj} converted from ATMPROJ to internal fmt")
+
+        proj = proj_data["proj"]
+        efermi = proj_data["efermi"]
+        eigvals = proj_data["eigvals"]
+        energy_units = proj_data["energy_units"].lower()
+
+        if energy_units in ("ha", "hartree", "au"):
+            factor = 2 * 13.605693009  # 1 Ha = 2 Rydbergs = 27.211386 eV
+        elif energy_units in ("ry", "ryd", "rydberg"):
+            factor = 13.605693009  # 1 Ry = 13.605693 eV
+        elif energy_units in ("ev", "electronvolt"):
+            factor = 1.0
+        else:
+            raise ValueError(f"Unknown energy unit: {energy_units}")
+
+        efermi = efermi * factor
+        eigvals = eigvals * factor - efermi  # Shift eigenvalues by Fermi energy
+
+        nspin, nkpts, natomwfc, _ = Hk.shape
+        nbnd = proj.shape[1]
+
+        for isp in range(nspin):
+            if nspin == 2:
+                proj_file = os.path.join(
+                    output_dir, f"projectability_{['up', 'dn'][isp]}.txt"
+                )
+            else:
+                proj_file = os.path.join(output_dir, "projectability.txt")
+
+            with open(proj_file, "w") as f:
+                f.write("# Energy (eV)        Projectability\n")
+                for ik in range(nkpts):
+                    for ib in range(nbnd):
+                        proj_vec = proj[:, ib, ik, isp]
+                        weight = np.vdot(proj_vec, proj_vec).real
+                        energy = eigvals[ib, ik, isp]
+                        f.write(f"{energy:20.13f}  {weight:20.13f}\n")
+        log_rank0("Printed projectabilities to projectability.txt")
+
+        if not do_orthoovp and Sk is not None:
+            kovp_file = os.path.join(output_dir, "kovp.txt")
+            with open(kovp_file, "w") as f:
+                f.write("# Overlap Real        Overlap Imag\n")
+                for ik in range(nkpts):
+                    for isp in range(nspin):
+                        mat = Sk[:, :, ik, isp]
+                        for i in range(natomwfc):
+                            for j in range(natomwfc):
+                                f.write(
+                                    f"{mat[i, j].real:20.13f}  {mat[i, j].imag:20.13f}\n"
+                                )
+            log_rank0("Printed overlap matrices to kovp.txt")
 
     return hk_data
 
