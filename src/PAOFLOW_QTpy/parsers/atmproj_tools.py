@@ -189,6 +189,9 @@ def parse_atomic_proj(
         efermi = efermi * factor
         eigvals = eigvals * factor - efermi  # Shift eigenvalues by Fermi energy
 
+        proj_data["efermi"] = efermi
+        proj_data["eigvals"] = eigvals
+
         nspin, nkpts, natomwfc, _ = Hk.shape
         nbnd = proj.shape[1]
 
