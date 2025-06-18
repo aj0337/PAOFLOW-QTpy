@@ -3,6 +3,7 @@ import re
 import numpy as np
 import xml.etree.ElementTree as ET
 from typing import Optional, Dict
+from scipy.linalg import eigh, inv
 
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
@@ -92,13 +93,32 @@ def parse_atomic_proj(
         file_proj, lattice_data
     )  # Reads eigvals, proj, overlap
 
+    # Preserve raw (QE) eigenvalues and Fermi energy
+    proj_data["eigvals_raw"] = proj_data["eigvals"]
+    proj_data["efermi_raw"] = proj_data["efermi"]
+
+    # Determine conversion factor to eV
+    energy_units = proj_data["energy_units"].lower()
+    if energy_units in ("ha", "hartree", "au"):
+        factor = 2 * 13.605693009  # Ha to eV
+    elif energy_units in ("ry", "ryd", "rydberg"):
+        factor = 13.605693009  # Ry to eV
+    elif energy_units in ("ev", "electronvolt"):
+        factor = 1.0
+    else:
+        raise ValueError(f"Unknown energy unit: {energy_units}")
+
+    # Apply conversion and shift eigenvalues
+    proj_data["efermi"] = proj_data["efermi_raw"] * factor
+    proj_data["eigvals"] = proj_data["eigvals_raw"] * factor - proj_data["efermi"]
+
     log_rank0("  Dimensions found in atomic_proj.{dat,xml}:")
     log_rank0(f"    nbnd     : {proj_data['nbnd']:>5}")
     log_rank0(f"    nkpts    : {proj_data['nkpts']:>5}")
     log_rank0(f"    nspin    : {proj_data['nspin']:>5}")
     log_rank0(f"    natomwfc : {proj_data['natomwfc']:>5}")
     log_rank0(f"    nelec    : {proj_data['nelec']:>12.6f}")
-    log_rank0(f"    efermi   : {proj_data['efermi']:>12.6f}")
+    log_rank0(f"    efermi   : {proj_data['efermi_raw']:>12.6f}")
     log_rank0(f"    energy_units :  {proj_data['energy_units']}   ")
     log_rank0("")
     log_rank0("  ATMPROJ conversion to be done using:")
@@ -173,24 +193,7 @@ def parse_atomic_proj(
         log_rank0(f"{file_proj} converted from ATMPROJ to internal fmt")
 
         proj = proj_data["proj"]
-        efermi = proj_data["efermi"]
         eigvals = proj_data["eigvals"]
-        energy_units = proj_data["energy_units"].lower()
-
-        if energy_units in ("ha", "hartree", "au"):
-            factor = 2 * 13.605693009  # 1 Ha = 2 Rydbergs = 27.211386 eV
-        elif energy_units in ("ry", "ryd", "rydberg"):
-            factor = 13.605693009  # 1 Ry = 13.605693 eV
-        elif energy_units in ("ev", "electronvolt"):
-            factor = 1.0
-        else:
-            raise ValueError(f"Unknown energy unit: {energy_units}")
-
-        efermi = efermi * factor
-        eigvals = eigvals * factor - efermi  # Shift eigenvalues by Fermi energy
-
-        proj_data["efermi"] = efermi
-        proj_data["eigvals"] = eigvals
 
         nspin, nkpts, natomwfc, _ = Hk.shape
         nbnd = proj.shape[1]
@@ -403,6 +406,8 @@ def build_hamiltonian_from_proj(
     atmproj_thr: float,
     atmproj_nbnd: Optional[int],
     do_orthoovp: bool,
+    atmproj_do_norm: bool = False,
+    shifting_scheme: int = 1,
 ) -> Dict[str, np.ndarray]:
     """
     Construct H(k) from projection data.
@@ -418,7 +423,11 @@ def build_hamiltonian_from_proj(
     `atmproj_nbnd` : int or None
         Maximum number of bands to include.
     `do_orthoovp` : bool
-        If False, include the non-orthogonal overlaps. If True, the projector basis has been orthonormalized, i.e., S = I.
+        If False, include the non-orthogonal overlaps. If True, projector basis has been orthonormalized.
+    `atmproj_do_norm` : bool
+        If True, normalize the projectors.
+    `shifting_scheme` : int
+        1 = direct sum over projectors; 2 = projected subspace with inverse PA
 
     Returns
     -------
@@ -426,44 +435,124 @@ def build_hamiltonian_from_proj(
         Includes keys:
         - 'Hk': complex ndarray, shape (nspin, nkpts, natomwfc, natomwfc)
         - 'S' : complex ndarray, shape (natomwfc, natomwfc, nkpts, nspin) if available
+
+    Notes
+    -----
+    Two schemes are used for constructing the k-dependent Hamiltonian:
+
+    1. **Shifting scheme 1 (default):**
+
+       The Hamiltonian is constructed from the outer product of the projectors:
+
+           H(k) = ∑_b [eig_b(k) - κ] · |proj_b(k)><proj_b(k)|
+
+       where the summation runs over bands b with eigenvalues below `atmproj_sh` κ.
+       Optional projector normalization is applied before the outer product.
+
+    2. **Shifting scheme 2 (subspace projection):**
+
+       Let A be the matrix whose columns are selected projectors for eigenvalues < κ:
+
+           A_{i b} = <ϕ_i | ψ_b>
+
+       Let E be a diagonal matrix with corresponding eigenvalues:
+
+           E_{bb} = eig_b(k)
+
+       Define the projector overlap:
+
+           PA = A⁺ · A
+
+       Compute its inverse, IPA = (A⁺ A)⁻¹. Then construct:
+
+           H_aux = (E - κ IPA) · A⁺
+           H(k) = A · H_aux = A · (E - κ IPA) · A⁺
+
+       This is a more accurate low-rank projection of the Hamiltonian into the atomic subspace.
+
+    In both cases, a final shift of +κ is added to the Hamiltonian either as:
+    - H(k) += κ · S(k) for non-orthogonal basis
+    - H(k) += κ · I for orthonormal basis
+
+    If `do_orthoovp` is False, an additional transformation is applied:
+        H(k) -> S(k)½ · H(k) · S(k)½
+    where S(k)½ is the square root of the overlap matrix.
     """
+    eig = proj_data["eigvals"]
+    proj = proj_data["proj"]
+    S_raw = proj_data["overlap"]
+
     nbnd = proj_data["nbnd"]
     nkpts = proj_data["nkpts"]
     nspin = proj_data["nspin"]
     natomwfc = proj_data["natomwfc"]
 
-    eig = proj_data["eigvals"]
-    proj = proj_data["proj"]
-    S_raw = proj_data["overlap"]
-
     atmproj_nbnd_ = (
-        min(atmproj_nbnd, nbnd)
-        if atmproj_nbnd is not None and atmproj_nbnd > 0
-        else nbnd
+        min(atmproj_nbnd, nbnd) if atmproj_nbnd and atmproj_nbnd > 0 else nbnd
     )
-
     Hk = np.zeros((nspin, nkpts, natomwfc, natomwfc), dtype=np.complex128)
-    Sk = None
-
-    if not do_orthoovp and S_raw is not None:
-        Sk = np.copy(S_raw)
+    Sk = S_raw.copy() if not do_orthoovp and S_raw is not None else None
 
     for isp in range(nspin):
         for ik in range(nkpts):
-            for ib in range(atmproj_nbnd_):
-                if eig[ib, ik, isp] >= atmproj_sh:
-                    continue
+            if shifting_scheme == 2:
+                mask = [ib for ib in range(nbnd) if eig[ib, ik, isp] < atmproj_sh]
+                if not mask:
+                    raise RuntimeError(f"No eigenvalues below shift at ik = {ik}")
 
-                proj_b = proj[:, ib, ik, isp]
-                weight = np.vdot(proj_b, proj_b).real
+                E = np.diag(eig[mask, ik, isp])
+                A = proj[:, mask, ik, isp].copy()
 
-                if atmproj_thr > 0.0 and weight < atmproj_thr:
-                    continue
+                if atmproj_do_norm:
+                    for ib in range(A.shape[1]):
+                        norm = np.vdot(A[:, ib], A[:, ib]).real
+                        A[:, ib] /= np.sqrt(norm)
 
-                outer = np.outer(proj_b, proj_b.conj())
-                Hk[isp, ik] += eig[ib, ik, isp] * outer
+                PA = A.conj().T @ A
+                IPA = inv(PA)
+                H_aux = (E - atmproj_sh * IPA) @ A.conj().T
+                Hk[isp, ik] = A @ H_aux
 
-    return {
-        "Hk": Hk,
-        "S": Sk,
-    }
+                Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
+
+            else:
+                for ib in range(atmproj_nbnd_):
+                    if atmproj_thr > 0.0:
+                        proj_b = proj[:, ib, ik, isp]
+                        weight = np.vdot(proj_b, proj_b).real
+                        if eig[ib, ik, isp] > atmproj_sh:
+                            continue
+                        # Note: Do NOT filter by weight here, to match Fortran
+                    else:
+                        if eig[ib, ik, isp] >= atmproj_sh:
+                            continue
+                        proj_b = proj[:, ib, ik, isp]
+                        weight = np.vdot(proj_b, proj_b).real
+
+                    if atmproj_do_norm:
+                        proj_b /= np.sqrt(weight)
+
+                    Hk[isp, ik] += (eig[ib, ik, isp] - atmproj_sh) * np.outer(
+                        proj_b, proj_b.conj()
+                    )
+                Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
+
+            if not do_orthoovp and S_raw is not None:
+                S = S_raw[:, :, ik, isp]
+                w, U = eigh(S)
+                if np.any(w <= 0):
+                    raise ValueError(
+                        f"Negative or zero overlap eigenvalue at ik={ik}, isp={isp}"
+                    )
+                sqrtS = U @ np.diag(np.sqrt(w)) @ U.conj().T
+                Hk[isp, ik] = sqrtS @ Hk[isp, ik] @ sqrtS.conj().T
+
+            if not do_orthoovp and S_raw is not None:
+                Hk[isp, ik] += atmproj_sh * S_raw[:, :, ik, isp]
+            else:
+                Hk[isp, ik] += atmproj_sh * np.eye(natomwfc, dtype=np.complex128)
+
+            if not np.allclose(Hk[isp, ik], Hk[isp, ik].conj().T, atol=1e-8):
+                raise ValueError(f"Hk not Hermitian at ik={ik}, isp={isp}")
+
+    return {"Hk": Hk, "S": Sk}
