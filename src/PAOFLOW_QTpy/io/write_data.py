@@ -68,8 +68,7 @@ def write_kresolved_data(
     verbose: bool = True,
 ) -> None:
     """
-    Write k-resolved data (e.g. conductance_k or dos_k) into per-k-point .dat files,
-    matching the Fortran output structure.
+    Write k-resolved data (e.g. conductance_k or dos_k) into per-k-point .dat files.
 
     Parameters
     ----------
@@ -86,7 +85,7 @@ def write_kresolved_data(
     `postfix` : str
         Optional postfix to append to filenames (e.g. ".test").
     `precision` : int
-        Floating-point precision to write (Fortran uses f15.9).
+        Floating-point precision to write.
     `verbose` : bool
         If True, print file paths as they are written.
     """
@@ -94,7 +93,7 @@ def write_kresolved_data(
     nch, nkpts, ne = (1, *data.shape) if data.ndim == 2 else data.shape
 
     for ik in range(nkpts):
-        ik_str = f"{ik+1:04d}"
+        ik_str = f"{ik + 1:04d}"
         filename = f"{prefix}_{label}-{ik_str}{postfix}.dat"
         filepath = output_dir / filename
 
@@ -115,7 +114,7 @@ def write_kresolved_data(
                     f.write(f"{egrid[ie]:15.{precision}f} {vals}\n")
 
         if verbose:
-            print(f"[INFO] Wrote {label} for k-point {ik+1} → {filepath}")
+            print(f"[INFO] Wrote {label} for k-point {ik + 1} → {filepath}")
 
 
 def write_eigenchannels(
@@ -274,7 +273,7 @@ def write_internal_format_files(
         f.write(
             f'nk="{nk[0]} {nk[1]} {nk[2]}" shift="{shift}" nrtot="{nrtot}" nr="{nr[0]} {nr[1]} {nr[2]}" '
         )
-        f.write(f"have_overlap=\"{'T' if have_overlap else 'F'}\"\n")
+        f.write(f'have_overlap="{"T" if have_overlap else "F"}"\n')
         f.write(f'fermi_energy="{fermi_energy:.15E}"/>\n')
 
         # DIRECT LATTICE
@@ -293,7 +292,7 @@ def write_internal_format_files(
 
         # VKPT
         f.write(
-            f'    <VKPT type="real" size="{3*nkpts}" columns="3" units="crystal">\n'
+            f'    <VKPT type="real" size="{3 * nkpts}" columns="3" units="crystal">\n'
         )
         for i in range(vkpts_crystal.shape[1]):
             f.write(
@@ -308,7 +307,7 @@ def write_internal_format_files(
 
         # IVR
         f.write(
-            f'    <IVR type="integer" size="{3*nrtot}" columns="3" units="crystal">\n'
+            f'    <IVR type="integer" size="{3 * nrtot}" columns="3" units="crystal">\n'
         )
         for row in ivr:
             f.write(" {:10d}{:10d}{:10d} \n".format(*row))
@@ -323,21 +322,77 @@ def write_internal_format_files(
         # RHAM section
         f.write("    <RHAM>\n")
         for ir in range(nrtot):
-            tag = f"VR.{ir+1}"
-            f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
+            tag = f"VR.{ir + 1}"
+            f.write(f'      <{tag} type="complex" size="{dim * dim}">\n')
             flat = Hk[0, ir].flatten()
             for z in flat:
                 f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
             f.write(f"      </{tag}>\n")
 
             if have_overlap:
-                tag = f"OVERLAP.{ir+1}"
-                f.write(f'      <{tag} type="complex" size="{dim*dim}">\n')
+                tag = f"OVERLAP.{ir + 1}"
+                f.write(f'      <{tag} type="complex" size="{dim * dim}">\n')
                 flat = Sk[0, ir].flatten()
                 for z in flat:
                     f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
                 f.write(f"      </{tag}>\n")
-
         f.write("    </RHAM>\n")
+
+        write_kham(Hk, f)
+
         f.write("  </HAMILTONIAN>\n")
         f.write("</Root>\n")
+
+
+def write_kham(
+    Hk: np.ndarray,
+    f: object,
+    spin_component: str = "all",
+    tag: str = "KHAM",
+    block_prefix: str = "KH",
+) -> None:
+    """
+    Write Hk to an IOTK-style XML file.
+
+    Parameters
+    ----------
+    `Hk` : (nspin, nkpts, dim, dim) complex ndarray
+        Hamiltonian matrices in k-space.
+    `output_file` : Path
+        Destination XML file.
+    `spin_component` : str
+        One of: "all", "up", "down".
+    `tag` : str
+        Name of the XML block (default: "KHAM").
+    `block_prefix` : str
+        Prefix for matrix block tags (default: "KH" → <KH.1>, <KH.2>, ...)
+    """
+    f.write("  <HAMILTONIAN>\n")
+    nspin, nkpts, _, _ = Hk.shape
+
+    for isp in range(nspin):
+        if spin_component == "up" and isp == 1:
+            continue
+        if spin_component == "down" and isp == 0:
+            continue
+
+        if spin_component == "all" and nspin == 2:
+            f.write(f"    <SPIN.{isp + 1}>\n")
+
+        f.write(f"      <{tag}>\n")
+        for ik in range(nkpts):
+            tagname = f"{block_prefix}.{ik + 1}"
+            mat = Hk[isp, ik]
+            dim = mat.shape[0]
+            f.write(f'        <{tagname} type="complex" size="{dim * dim}">\n')
+            for i in range(dim):
+                for j in range(dim):
+                    z = mat[i, j]
+                    f.write(f" {z.real: .15E},{z.imag: .15E}\n")
+            f.write(f"        </{tagname}>\n")
+        f.write(f"      </{tag}>\n")
+
+        if spin_component == "all" and nspin == 2:
+            f.write(f"    </SPIN.{isp + 1}>\n")
+
+    f.write("  </HAMILTONIAN>\n")
