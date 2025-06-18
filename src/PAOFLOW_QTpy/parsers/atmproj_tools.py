@@ -522,7 +522,6 @@ def build_hamiltonian_from_proj(
                         weight = np.vdot(proj_b, proj_b).real
                         if eig[ib, ik, isp] > atmproj_sh:
                             continue
-                        # Note: Do NOT filter by weight here, to match Fortran
                     else:
                         if eig[ib, ik, isp] >= atmproj_sh:
                             continue
@@ -533,7 +532,7 @@ def build_hamiltonian_from_proj(
                         proj_b /= np.sqrt(weight)
 
                     Hk[isp, ik] += (eig[ib, ik, isp] - atmproj_sh) * np.outer(
-                        proj_b, proj_b.conj()
+                        proj_b.conj(), proj_b
                     )
                 Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
 
