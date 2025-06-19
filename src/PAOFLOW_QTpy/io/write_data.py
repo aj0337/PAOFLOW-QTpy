@@ -6,6 +6,9 @@ from typing import Dict
 
 import logging
 
+from PAOFLOW_QTpy.compute_rham import compute_rham
+from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
+
 
 logger = logging.getLogger(__name__)
 
@@ -240,14 +243,11 @@ def write_internal_format_files(
 
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
-
     kpts = proj_data["kpts"]
     vkpts_crystal = proj_data["vkpts_crystal"]
+    vkpts_cartesian = proj_data["vkpts_cartesian"]
 
     wk = proj_data["wk"]
-    wk_sum = np.sum(wk)
-    wk = wk / wk_sum
-
     spin_component = "all"
     shift = np.zeros(3, dtype=float)  # No shift in k-point grid for crystal coordinates
     nspin, _, dim, _ = Hk.shape
@@ -257,6 +257,18 @@ def write_internal_format_files(
     nr = hk_data["nr"]
     have_overlap = Sk is not None and not do_orthoovp
     fermi_energy = 0.0
+
+    vr_crystal = ivr.astype(np.float64).T
+    rgrid_cart = crystal_to_cartesian(vr_crystal, avec).T  # (nrtot, 3)
+    Hr = np.empty((nrtot, dim, dim), dtype=np.complex128)
+
+    for ir in range(nrtot):
+        Hr[ir] = compute_rham(rgrid_cart[ir], Hk[0], vkpts_cartesian, wk)
+
+    if have_overlap:
+        Sr = np.empty((nrtot, dim, dim), dtype=np.complex128)
+        for ir in range(nrtot):
+            Sr[ir] = compute_rham(rgrid_cart[ir], Sk[0], vkpts_cartesian, wk)
 
     with open(ham_file, "w") as f:
         f.write('<?xml version="1.0"?>\n')
@@ -324,20 +336,19 @@ def write_internal_format_files(
         for ir in range(nrtot):
             tag = f"VR.{ir + 1}"
             f.write(f'      <{tag} type="complex" size="{dim * dim}">\n')
-            flat = Hk[0, ir].flatten()
-            for z in flat:
+            for z in Hr[ir].flatten():
                 f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
             f.write(f"      </{tag}>\n")
 
             if have_overlap:
                 tag = f"OVERLAP.{ir + 1}"
                 f.write(f'      <{tag} type="complex" size="{dim * dim}">\n')
-                flat = Sk[0, ir].flatten()
-                for z in flat:
+                for z in Sr[ir].flatten():
                     f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
                 f.write(f"      </{tag}>\n")
         f.write("    </RHAM>\n")
 
+        # KHAM section
         write_kham(Hk, f)
 
         f.write("  </HAMILTONIAN>\n")

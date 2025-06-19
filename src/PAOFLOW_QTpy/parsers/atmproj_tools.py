@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 from typing import Optional, Dict
 from scipy.linalg import eigh, inv
 
-from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
@@ -145,39 +144,13 @@ def parse_atomic_proj(
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
 
-    kpts = proj_data["kpts"]  # Shape (3, nkpts)
-    wk = proj_data["wk"]
-    avec = lattice_data["avec"]
-
     nk = np.zeros(3, dtype=int)
     nk[0], nk[1], nk[2] = 1, 1, 4  # TODO : Why is this hardcoded?
     nr = nk
     ivr, wr = grids_get_rgrid(nr)
-    vr = (avec @ ivr.T).T
 
-    nspin, nkpts, n, _ = Hk.shape
-    nR = vr.shape[0]
-    Hr = np.zeros((nspin, nR, n, n), dtype=np.complex128)
-    Sr = (
-        np.zeros((nspin, nR, n, n), dtype=np.complex128)
-        if (not do_orthoovp and Sk is not None)
-        else None
-    )
-
-    for isp in range(nspin):
-        for ir in range(nR):
-            Hr[isp, ir] = compute_rham(vr[ir], Hk[isp], kpts, wk)
-            if Sr is not None:
-                Sr[isp, ir] = compute_rham(
-                    vr[ir], Sk[..., isp].transpose(2, 0, 1), kpts, wk
-                )
-
-    hk_data["Hr"] = Hr
-    if Sr is not None:
-        hk_data["Sr"] = Sr
     hk_data["ivr"] = ivr
     hk_data["wr"] = wr
-    hk_data["vr"] = vr
     hk_data["nk"] = nk
     hk_data["nr"] = nr
 
@@ -330,7 +303,8 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     wk = np.array(
         [float(val) for val in root.find("WEIGHT_OF_K-POINTS").text.strip().split()]
     )
-
+    wk_sum = np.sum(wk)
+    wk = wk / wk_sum
     vkpts = kpoints * 2 * np.pi / lattice_data["alat"]
     vkpts_crystal = cartesian_to_crystal(
         vkpts, lattice_data["bvec"]
@@ -392,6 +366,7 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
         "efermi": efermi,
         "energy_units": energy_units,
         "kpts": kpoints,
+        "vkpts_cartesian": vkpts,
         "vkpts_crystal": vkpts_crystal,
         "wk": wk,
         "eigvals": eigvals,
