@@ -69,7 +69,7 @@ FileFormat = Literal[
 
 class ConductorData(PydanticBaseModel):
     dimL: NonNegativeInt = 0
-    dimR: NonNegativeInt = 1
+    dimR: NonNegativeInt = 0
     dimC: NonNegativeInt = 0
     transport_dir: Annotated[int, conint(ge=1, le=3)] = 0
     calculation_type: CalculationType = "conductor"
@@ -141,11 +141,12 @@ class ConductorData(PydanticBaseModel):
     H00_R: Dict[str, Any] = None
     H01_R: Dict[str, Any] = None
 
-    def __init__(self, filename, **data: Any) -> None:
+    def __init__(self, filename: str, *, validate: bool = True, **data: Any) -> None:
         input_dict = self.read(filename)
         data.update(input_dict)
         super().__init__(**data)
-        self.validate_input()
+        if validate:
+            self.validate_input()
 
     def read(self, filename: str) -> Dict[str, Any]:
         try:
@@ -172,14 +173,14 @@ class ConductorData(PydanticBaseModel):
                 raise ValueError("dimL needs to be positive")
             if self.dimR <= 0:
                 raise ValueError("dimR needs to be positive")
-            # if len(self.datafile_L) == 0:
-            #     raise ValueError("datafile_L unspecified")
-            # if len(self.datafile_R) == 0:
-            #     raise ValueError("datafile_R unspecified")
-            # if not self.datafile_L:
-            #     raise ValueError("Unable to find %s" % self.datafile_L)
-            # if not self.datafile_R:
-            #     raise ValueError("Unable to find %s" % self.datafile_R)
+            if len(self.datafile_L) == 0:
+                raise ValueError("datafile_L unspecified")
+            if len(self.datafile_R) == 0:
+                raise ValueError("datafile_R unspecified")
+            if not self.datafile_L:
+                raise ValueError(f"Unable to find {self.datafile_L}")
+            if not self.datafile_R:
+                raise ValueError(f"Unable to find {self.datafile_R}")
 
         else:
             if self.dimL != 1 or self.dimR != 1:

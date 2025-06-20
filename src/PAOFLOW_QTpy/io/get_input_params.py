@@ -13,7 +13,9 @@ def load_summary_data_from_yaml(yaml_path: str, comm=None) -> dict:
     user_input = get_input_from_yaml(yaml_path)
     input_conductor = user_input.get("input_conductor", {})
     dummy_filename = Path(yaml_path).absolute()
-    defaults = ConductorData(filename=dummy_filename, comm=comm).model_dump()
+    defaults = ConductorData(
+        filename=dummy_filename, validate=False, comm=comm
+    ).model_dump()
     summary_data = {**defaults, **input_conductor}
 
     return summary_data
