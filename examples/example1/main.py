@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import numpy as np
 from mpi4py import MPI
 from time import perf_counter
@@ -6,6 +7,7 @@ from time import perf_counter
 from PAOFLOW_QTpy.do_conductor import run_conductor
 from PAOFLOW_QTpy.hamiltonian_init import initialize_hamiltonian_blocks
 from PAOFLOW_QTpy.io.startup import startup
+from PAOFLOW_QTpy.io.write_data import write_data
 from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
@@ -164,7 +166,7 @@ def main():
     write_header("Frequency Loop")
 
     data_dict["_freqloop_start_time"] = perf_counter()
-    conduct, dos = run_conductor(
+    conduct, dos, conduct_k, dos_k = run_conductor(
         data_dict=data_dict,
         ne=data_dict["ne"],
         egrid=np.linspace(data_dict["emin"], data_dict["emax"], data_dict["ne"]),
@@ -193,6 +195,35 @@ def main():
         transfer_thr=data_dict.get("transfer_thr", 1e-12),
         nprint=data_dict.get("nprint", 20),
     )
+
+    write_header("Writing data")
+
+    if comm.rank == 0:
+        output_dir = Path("output")
+        egrid = np.linspace(data_dict["emin"], data_dict["emax"], data_dict["ne"])
+
+        write_data(egrid, conduct, "conductance", output_dir)
+        write_data(egrid, dos, "doscond", output_dir)
+
+        if data_dict.get("write_kdata", False):
+            for ik in range(nkpts_par):
+                ik_str = f"{ik + 1:04d}"
+                filename_cond = f"{prefix}_cond-{ik_str}.dat"
+                filename_dos = f"{prefix}_doscond-{ik_str}.dat"
+
+                with (output_dir / filename_cond).open("w") as f:
+                    f.write("# E (eV)   cond(E)\n")
+                    for ie in range(data_dict["ne"]):
+                        values = " ".join(
+                            f"{conduct_k[ch, ik, ie]:15.9f}"
+                            for ch in range(conduct_k.shape[0])
+                        )
+                        f.write(f"{egrid[ie]:15.9f} {values}\n")
+
+                with (output_dir / filename_dos).open("w") as f:
+                    f.write("# E (eV)   doscond(E)\n")
+                    for ie in range(data_dict["ne"]):
+                        f.write(f"{egrid[ie]:15.9f} {dos_k[ie, ik]:15.9f}\n")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import time
 
-from PAOFLOW_QTpy.io.write_data import write_eigenchannels, write_kresolved_data
+from PAOFLOW_QTpy.io.write_data import write_eigenchannels
 from PAOFLOW_QTpy.green import compute_conductor_green_function
 from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
@@ -72,6 +72,11 @@ def run_conductor(
         Total and channel-resolved conductance values vs energy.
     `dos` : ndarray
         Density of states vs energy.
+    `conductance_k` : ndarray
+        k-resolved conductance values.
+    `dos_k` : ndarray
+        k-resolved density of states values.
+
     """
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -200,23 +205,4 @@ def run_conductor(
     comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
 
-    if rank == 0:
-        output_dir = Path("output")
-        write_kresolved_data(
-            egrid,
-            conduct_k,
-            label="cond",
-            output_dir=output_dir,
-            prefix="prefix",
-            postfix="",
-        )
-        write_kresolved_data(
-            egrid,
-            dos_k,
-            label="doscond",
-            output_dir=output_dir,
-            prefix="prefix",
-            postfix="",
-        )
-
-    return conduct, dos
+    return conduct, dos, conduct_k, dos_k

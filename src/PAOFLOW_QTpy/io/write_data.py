@@ -5,6 +5,7 @@ from typing import Dict
 
 
 import logging
+import numpy.typing as npt
 
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
@@ -60,9 +61,9 @@ def write_dos_and_conductance(
     return filepath
 
 
-def write_kresolved_data(
-    egrid: np.ndarray,
-    data: np.ndarray,
+def write_data(
+    egrid: npt.NDArray[np.float64],
+    data: npt.NDArray[np.float64],
     label: str,
     output_dir: Path,
     prefix: str = "",
@@ -71,53 +72,52 @@ def write_kresolved_data(
     verbose: bool = True,
 ) -> None:
     """
-    Write k-resolved data (e.g. conductance_k or dos_k) into per-k-point .dat files.
+    Write general data (e.g., conductance or DOS) into a single text file.
 
     Parameters
     ----------
     `egrid` : (ne,) ndarray
         Energy grid.
-    `data` : (nch, nkpts, ne) or (ne, nkpts) ndarray
-        k-resolved data to write.
-    `label` : {"cond", "doscond"}
-        Type of data. Used for file naming and header.
+    `data` : (dim, ne) or (ne,) ndarray
+        Data to write.
+    `label` : str
+        Data type label used for header and filename (e.g., "conductance", "doscond").
     `output_dir` : Path
         Directory to store the output files.
     `prefix` : str
-        Optional prefix to prepend to filenames.
+        Optional prefix to prepend to the filename.
     `postfix` : str
-        Optional postfix to append to filenames (e.g. ".test").
+        Optional postfix to append to the filename.
     `precision` : int
-        Floating-point precision to write.
+        Number of decimal places to write.
     `verbose` : bool
-        If True, print file paths as they are written.
+        Whether to print output file paths.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    nch, nkpts, ne = (1, *data.shape) if data.ndim == 2 else data.shape
+    filename = f"{prefix}_{label}_{postfix}.dat" if prefix else f"{label}{postfix}.dat"
+    filepath = output_dir / filename
 
-    for ik in range(nkpts):
-        ik_str = f"{ik + 1:04d}"
-        filename = f"{prefix}_{label}-{ik_str}{postfix}.dat"
-        filepath = output_dir / filename
+    width = 15
+    fmt = f"{{:{width}.{precision}f}}"
 
-        with filepath.open("w") as f:
-            if label == "cond":
-                f.write("# E (eV)   cond(E)\n")
-            elif label == "doscond":
-                f.write("# E (eV)   doscond(E)\n")
+    with filepath.open("w") as f:
+        if label == "conductance":
+            f.write("# E (eV)   cond(E)\n")
+        elif label == "doscond":
+            f.write("# E (eV)   doscond(E)\n")
 
+        ne = egrid.shape[0]
+        if data.ndim == 1:
             for ie in range(ne):
-                if nch == 1:
-                    val = data[ie, ik] if data.ndim == 2 else data[0, ik, ie]
-                    f.write(f"{egrid[ie]:15.{precision}f} {val:15.{precision}f}\n")
-                else:
-                    vals = " ".join(
-                        f"{data[ch, ik, ie]:15.{precision}f}" for ch in range(nch)
-                    )
-                    f.write(f"{egrid[ie]:15.{precision}f} {vals}\n")
+                f.write(f"{fmt.format(egrid[ie])}{fmt.format(data[ie])}\n")
+        else:
+            dim = data.shape[0]
+            for ie in range(ne):
+                values = " ".join(fmt.format(data[i, ie]) for i in range(dim))
+                f.write(f"{fmt.format(egrid[ie])}{values}\n")
 
-        if verbose:
-            print(f"[INFO] Wrote {label} for k-point {ik + 1} → {filepath}")
+    if verbose:
+        print(f"Writing {label} to {filepath}")
 
 
 def write_eigenchannels(
