@@ -4,6 +4,8 @@ from typing import Literal
 
 import numpy as np
 
+from PAOFLOW_QTpy.kpoints import compute_ivr_par, kpoints_mask
+
 
 class OperatorBlock:
     """
@@ -42,7 +44,8 @@ class OperatorBlock:
         self.ie: int = 0
         self.ie_buff: int = 0
         self.ik: int = 0
-        self.tag: str = ""
+        self.dimx_sgm: int = 0
+        self.tag: dict[str, str] = {}
 
         self.H: np.ndarray | None = None
         self.S: np.ndarray | None = None
@@ -146,6 +149,30 @@ class OperatorBlock:
 
         self.allocated = True
 
+    def deallocate(self) -> None:
+        """
+        Deallocate all internal arrays and reset the OperatorBlock state.
+
+        This releases memory and resets allocation flags, mirroring the behavior
+        of the Fortran `operator_blc_deallocate` routine.
+        """
+        self.irows = None
+        self.icols = None
+        self.irows_sgm = None
+        self.icols_sgm = None
+        self.aux = None
+        self.sgm_aux = None
+        self.H = None
+        self.S = None
+        self.sgm = None
+        self.ivr = None
+        self.ivr_sgm = None
+
+        self.iunit_sgm_opened = False
+        self.allocated = False
+
+        self.tag = {}
+
     def clear(self):
         """Release all allocated memory for this block."""
         self.__init__(name=self.name)
@@ -215,7 +242,6 @@ class OperatorBlock:
             ne_sgm=other.ne_sgm,
             nrtot=other.nrtot,
             nrtot_sgm=other.nrtot_sgm,
-            blc_name=other.blc_name,
             lhave_aux=other.lhave_aux,
             lhave_sgm_aux=other.lhave_sgm_aux,
             lhave_ham=other.lhave_ham,
@@ -249,6 +275,39 @@ class OperatorBlock:
             self.aux[:] = other.aux
         if self.sgm_aux is not None:
             self.sgm_aux[:] = other.sgm_aux
+
+    def copy(self) -> OperatorBlock:
+        new = OperatorBlock(self.name)
+        new.copy_from(self)
+        return new
+
+    def set_ivr_par_from_nr(
+        self,
+        nr_par: tuple[int, int],
+        transport_dir: int,
+    ) -> None:
+        """
+        Set the `ivr_par` attribute from a 2D R-vector mesh orthogonal to the transport direction.
+
+        Parameters
+        ----------
+        `nr_par` : tuple of int
+            Mesh dimensions (n1, n2) orthogonal to the transport axis.
+        `transport_dir` : int
+            Direction of transport (1=x, 2=y, 3=z).
+        """
+
+        ivr_par_2d, _ = compute_ivr_par(nr_par)
+        self.ivr_par = ivr_par_2d
+
+        # Compute full 3D ivr (needed by read_matrix)
+        ivr_par3D = np.array(
+            [
+                kpoints_mask(ivr_par_2d[:, i], 0, transport_dir)
+                for i in range(ivr_par_2d.shape[1])
+            ]
+        ).T
+        self.ivr = ivr_par3D
 
     def memusage(self, memtype: Literal["ham", "corr", "all"] = "all") -> float:
         """

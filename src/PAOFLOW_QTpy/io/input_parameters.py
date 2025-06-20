@@ -109,7 +109,7 @@ class ConductorData(PydanticBaseModel):
     datafile_L_sgm: str = ""
     datafile_C_sgm: str = ""
     datafile_R_sgm: str = ""
-    do_orthovp: bool = False
+    do_orthoovp: bool = False
     atmproj_sh: NonNegativeFloat = 5.0
     atmproj_thr: Annotated[NonNegativeFloat, confloat(ge=0.0, le=1.0)] = 0.9
     atmproj_nbnd: NonNegativeInt = 0
@@ -182,9 +182,14 @@ class ConductorData(PydanticBaseModel):
             if not self.datafile_R:
                 raise ValueError(f"Unable to find {self.datafile_R}")
 
-        else:
-            if self.dimL != 1 or self.dimR != 1:
+        if self.calculation_type == "bulk":
+            # Check whether user explicitly specified dimL/dimR
+            user_provided_fields = set(self.model_fields_set)
+            if "dimL" in user_provided_fields or "dimR" in user_provided_fields:
                 raise ValueError("dimL and dimR should not be set in bulk mode")
+            self.dimL = self.dimC
+            self.dimR = self.dimC
+
             if len(self.datafile_L.strip()) != 0:
                 raise ValueError("datafile_L should not be specified in bulk mode")
             if len(self.datafile_R.strip()) != 0:

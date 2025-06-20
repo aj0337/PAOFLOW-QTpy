@@ -1,4 +1,5 @@
 from typing import Literal
+import numpy as np
 from PAOFLOW_QTpy.operator_blc import OperatorBlock
 
 
@@ -54,22 +55,40 @@ class HamiltonianSystem:
         self.blc_LC = OperatorBlock("block_LC")
         self.blc_CR = OperatorBlock("block_CR")
 
-    def allocate(self) -> None:
+    def allocate(self, ivr_par: np.ndarray) -> None:
         """
-        Allocate memory for all matrix blocks. Raises RuntimeError if already allocated or invalid dimensions.
+        Allocate memory for all matrix blocks and initialize their metadata.
+
+        Parameters
+        ----------
+        ivr_par : np.ndarray
+            2D array of shape (2, nrtot_par) specifying the parallel real-space R-vectors.
+            This is used to match R-slices in the Hamiltonian during read-in.
         """
         if self.allocated:
             raise RuntimeError("Hamiltonian blocks already allocated.")
         if min(self.dimL, self.dimC, self.dimR, self.nkpts_par) <= 0:
             raise ValueError("Invalid dimensions for Hamiltonian allocation.")
 
-        self.blc_00L.allocate(self.dimL, self.dimL, self.nkpts_par)
-        self.blc_01L.allocate(self.dimL, self.dimL, self.nkpts_par)
-        self.blc_00R.allocate(self.dimR, self.dimR, self.nkpts_par)
-        self.blc_01R.allocate(self.dimR, self.dimR, self.nkpts_par)
-        self.blc_00C.allocate(self.dimC, self.dimC, self.nkpts_par)
-        self.blc_LC.allocate(self.dimL, self.dimC, self.nkpts_par)
-        self.blc_CR.allocate(self.dimC, self.dimR, self.nkpts_par)
+        block_specs = [
+            (self.blc_00L, self.dimL, self.dimL),
+            (self.blc_01L, self.dimL, self.dimL),
+            (self.blc_00R, self.dimR, self.dimR),
+            (self.blc_01R, self.dimR, self.dimR),
+            (self.blc_00C, self.dimC, self.dimC),
+            (self.blc_LC, self.dimL, self.dimC),
+            (self.blc_CR, self.dimC, self.dimR),
+        ]
+
+        for block, d1, d2 in block_specs:
+            block.allocate(d1, d2, self.nkpts_par)
+            block.tag = {
+                "rows": "all",
+                "cols": "all",
+                "rows_sgm": "all",
+                "cols_sgm": "all",
+            }
+            block.ivr_par = ivr_par
 
         self.allocated = True
 
@@ -80,13 +99,13 @@ class HamiltonianSystem:
         if not self.allocated:
             return
 
-        self.blc_00L.deallocate()
-        self.blc_01L.deallocate()
-        self.blc_00R.deallocate()
-        self.blc_01R.deallocate()
-        self.blc_00C.deallocate()
-        self.blc_LC.deallocate()
-        self.blc_CR.deallocate()
+        self.blc_00L.clear()
+        self.blc_01L.clear()
+        self.blc_00R.clear()
+        self.blc_01R.clear()
+        self.blc_00C.clear()
+        self.blc_LC.clear()
+        self.blc_CR.clear()
 
         self.allocated = False
 
@@ -105,21 +124,9 @@ class HamiltonianSystem:
             Estimated memory in megabytes.
         """
         usage = 0.0
-        if self.blc_00L.allocated:
-            usage += self.blc_00L.memusage(memtype)
-        if self.blc_01L.allocated:
-            usage += self.blc_01L.memusage(memtype)
-        if self.blc_00R.allocated:
-            usage += self.blc_00R.memusage(memtype)
-        if self.blc_01R.allocated:
-            usage += self.blc_01R.memusage(memtype)
-        if self.blc_00C.allocated:
-            usage += self.blc_00C.memusage(memtype)
-        if self.blc_LC.allocated:
-            usage += self.blc_LC.memusage(memtype)
-        if self.blc_CR.allocated:
-            usage += self.blc_CR.memusage(memtype)
-
+        for block in self.blocks.values():
+            if block.allocated:
+                usage += block.memusage(memtype)
         return usage
 
     @property

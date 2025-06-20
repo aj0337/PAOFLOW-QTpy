@@ -87,7 +87,7 @@ def run_conductor(
     dos = np.zeros(ne, dtype=np.float64)
     dos_k = np.zeros((ne, nkpts_par), dtype=np.float64)
 
-    ie_start, ie_end = divide_work(1, ne, rank, size)
+    ie_start, ie_end = divide_work(0, ne - 1, rank, size)
 
     for ie_g in range(ie_start, ie_end + 1):
         avg_iter = 0.0

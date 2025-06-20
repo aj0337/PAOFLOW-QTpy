@@ -17,18 +17,19 @@ def compute_surface_transfer_matrices(
     fail_limit: int = 5,
     verbose: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray, int]:
-    """Iteratively compute surface transfer matrices using the Sancho-Rubio method.
+    """
+    Iteratively compute surface transfer matrices using the Sancho-Rubio method.
 
     Parameters
     ----------
     `h_eff` : np.ndarray
-        Effective Hamiltonian block H_00 (dim x dim).
+        Effective Hamiltonian block H_00 (ndim x ndim).
     `s_eff` : np.ndarray
-        Overlap matrix S_00 (dim x dim).
+        Overlap matrix S_00 (ndim x ndim).
     `t_coupling` : np.ndarray
-        Coupling matrix H_01 (dim x dim).
+        Coupling matrix H_01 (ndim x ndim).
     `delta` : float
-        Small imaginary part added to stabilize inversion (default: 1e-8).
+        Small imaginary part added to stabilize inversion.
     `niterx` : int
         Maximum number of iterations.
     `transfer_thr` : float
@@ -43,33 +44,20 @@ def compute_surface_transfer_matrices(
     Returns
     -------
     `tot` : np.ndarray
-        Transfer matrix T (dim x dim).
+        Transfer matrix T (ndim x ndim).
     `tott` : np.ndarray
-        Conjugate transfer matrix T† (dim x dim).
+        Conjugate transfer matrix T† (ndim x ndim).
     `niter` : int
         Number of iterations used.
-
-    Notes
-    -----
-    Given transfer matrices `T` and `T†`, computes the surface or bulk Green's function
-    as follows:
-
-    - If `igreen == 1`: `G = [E⋅S - H - H_01 ⋅ T]⁻¹` (right surface)
-    - If `igreen == -1`: `G = [E⋅S - H - H_01† ⋅ T†]⁻¹` (left surface)
-    - If `igreen == 0`: `G = [E⋅S - H - H_01 ⋅ T - H_01† ⋅ T†]⁻¹` (bulk)
-
     """
     ndim = h_eff.shape[0]
-    z_shift = 1j * delta * s_eff
-    A = h_eff + z_shift
+    A = h_eff + 1j * delta * s_eff
 
     try:
         t11 = np.linalg.inv(A)
     except np.linalg.LinAlgError:
         if verbose:
-            logger.warning(
-                "Initial inversion failed: singular matrix in transfer matrix setup."
-            )
+            logger.warning("Initial inversion failed: singular matrix.")
         if fail_counter is not None:
             fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
             if fail_counter["nfail"] > fail_limit:
@@ -80,11 +68,12 @@ def compute_surface_transfer_matrices(
             0,
         )
 
-    tau = t11 @ t_coupling.conj().T
+    tau = t11 @ t_coupling.conj()
     taut = t11 @ t_coupling
+
     tot = tau.copy()
-    tsum = taut.copy()
     tott = taut.copy()
+    tsum = taut.copy()
     tsumt = tau.copy()
 
     for m in range(1, niterx + 1):
@@ -92,12 +81,13 @@ def compute_surface_transfer_matrices(
         t12_new = taut @ tau
         s1 = -(t11_new + t12_new)
         np.fill_diagonal(s1, 1.0 + np.diag(s1))
+
         try:
             s2 = np.linalg.inv(s1)
         except np.linalg.LinAlgError:
             if verbose:
                 logger.warning(
-                    f"Singular matrix encountered at iteration {m}; discarding energy point."
+                    f"Singular matrix at iteration {m}; discarding energy point."
                 )
             if fail_counter is not None:
                 fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
@@ -105,16 +95,25 @@ def compute_surface_transfer_matrices(
                     raise RuntimeError(
                         "Too many failures in transfer matrix convergence."
                     )
-            return np.zeros_like(tot), np.zeros_like(tott), m
+            return (
+                np.zeros((ndim, ndim), dtype=np.complex128),
+                np.zeros((ndim, ndim), dtype=np.complex128),
+                m,
+            )
 
-        t11_next = s2 @ (tau @ tau)
-        t12_next = s2 @ (taut @ taut)
-        tot += tsum @ t11_next
-        tsum = tsum @ t12_next
-        tott += tsumt @ t12_next
-        tsumt = tsumt @ t11_next
-        tau = t11_next
-        taut = t12_next
+        t11 = tau @ tau
+        t12 = taut @ taut
+        tau_next = s2 @ t11
+        taut_next = s2 @ t12
+
+        tot += tsum @ tau_next
+        tsum = tsum @ taut_next
+
+        tott += tsumt @ taut_next
+        tsumt = tsumt @ tau_next
+
+        tau = tau_next
+        taut = taut_next
 
         conver = np.sum(np.abs(tau) ** 2).real
         conver2 = np.sum(np.abs(taut) ** 2).real
@@ -129,4 +128,8 @@ def compute_surface_transfer_matrices(
         fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
         if fail_counter["nfail"] > fail_limit:
             raise RuntimeError("Too many failures in transfer matrix convergence.")
-    return np.zeros_like(tot), np.zeros_like(tott), niterx
+    return (
+        np.zeros((ndim, ndim), dtype=np.complex128),
+        np.zeros((ndim, ndim), dtype=np.complex128),
+        niterx,
+    )

@@ -7,7 +7,6 @@ from PAOFLOW_QTpy.operator_blc import OperatorBlock
 from PAOFLOW_QTpy.io.iotk_reader import IOTKReader
 from PAOFLOW_QTpy.parsers.parser_base import parse_index_array
 from PAOFLOW_QTpy.fourier_par import fourier_transform_real_to_kspace
-from PAOFLOW_QTpy.io.log_module import log_push, log_pop
 
 
 def read_matrix(
@@ -57,12 +56,11 @@ def read_matrix(
     the transport axis to obtain the k-resolved operator block.
 
     """
-    log_push("read_matrix")
 
     if not opr.allocated:
         raise RuntimeError("OperatorBlock is not allocated")
 
-    attr = opr.tag.strip()
+    attr = opr.tag
     label = opr.name.strip()
 
     # === Defaults and attribute parsing ===
@@ -97,7 +95,7 @@ def read_matrix(
     opr.icols_sgm = icols_sgm
 
     # === File parsing ===
-    reader = IOTKReader(Path(filein), section="/HAMILTONIAN/DATA")
+    reader = IOTKReader(Path(filein))
     header = reader.read_header()
 
     ldimwann = header["dimwann"]
@@ -112,13 +110,13 @@ def read_matrix(
 
     # Check grid dimensions
     nrtot_par = opr.H.shape[2]
-    A = np.zeros((dim1, dim2, nrtot_par), dtype=np.complex128)
-    S = np.zeros((dim1, dim2, nrtot_par), dtype=np.complex128)
+    A = np.zeros((dim1, dim2, nrtot_par), dtype=complex)
+    S = np.zeros((dim1, dim2, nrtot_par), dtype=complex)
 
     if nspin == 2:
-        reader.enter_section(f"SPIN{ispin + 1}")
+        reader.find_section(f"SPIN{ispin + 1}")
 
-    reader.enter_section("RHAM")
+    reader.find_section("RHAM")
 
     for ir_par in range(nrtot_par):
         ivr_aux = np.zeros(3, dtype=int)
@@ -156,10 +154,14 @@ def read_matrix(
             raise ValueError(f"3D R-vector {ivr_aux} not found for ir_par={ir_par}")
 
         ind = matches[0] + 1
-        A_loc = reader.read_array(f"VR{ind}", shape=(ldimwann, ldimwann))
+        A_loc = reader.read_array(
+            f"VR.{ind}", shape=(ldimwann, ldimwann), dtype=complex
+        )
 
         if lhave_ovp:
-            S_loc = reader.read_array(f"OVERLAP{ind}", shape=(ldimwann, ldimwann))
+            S_loc = reader.read_array(
+                f"OVERLAP{ind}", shape=(ldimwann, ldimwann), dtype=complex
+            )
         else:
             S_loc = np.zeros_like(A_loc)
             if label.lower() in {
@@ -181,13 +183,5 @@ def read_matrix(
                 A[i, j, ir_par] = A_loc[irows[i], icols[j]]
                 S[i, j, ir_par] = S_loc[irows[i], icols[j]]
 
-    if nspin == 2:
-        reader.exit_section(f"SPIN{ispin + 1}")
-
-    reader.exit_section("RHAM")
-    reader.close()
-
-    opr.H = fourier_transform_real_to_kspace(A, dim1, dim2, transport_dir)
-    opr.S = fourier_transform_real_to_kspace(S, dim1, dim2, transport_dir)
-
-    log_pop("read_matrix")
+    opr.H = fourier_transform_real_to_kspace(A, opr.wr_par, opr.table_par)
+    opr.S = fourier_transform_real_to_kspace(S, opr.wr_par, opr.table_par)
