@@ -369,6 +369,71 @@ def initialize_r_vectors(
     return ivr_par3D, wr_par
 
 
+def compute_ivr_par(nr_par: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate a 2D mesh of integer real-space vectors and associated weights
+    for use in constructing operator blocks in reciprocal space.
+
+    This function produces a grid of R-vectors on a uniform mesh centered
+    around the origin, spanning the two directions orthogonal to the transport axis.
+    Each R-vector is a pair of integers (Rx, Ry), symmetrically distributed
+    about zero to preserve hermiticity in subsequent Fourier transforms.
+
+    For each generated R-vector, its negative counterpart is also ensured to exist
+    in the final set. If a negative is not initially present, it is added, and
+    both the original and its negative are assigned half the original weight.
+
+    Parameters
+    ----------
+    `nr_par` : Tuple[int, int]
+        Size of the uniform mesh in the two directions orthogonal to the
+        transport axis. Each component specifies the number of grid points
+        along one axis.
+
+    Returns
+    -------
+    `ivr_par` : (2, nR) ndarray of int
+        Array of 2D integer real-space vectors.
+    `wr_par` : (nR,) ndarray of float
+        Associated weights for each R-vector, normalized by symmetry.
+
+    Notes
+    -----
+    The R-vectors are centered about the origin using the rule:
+        R_i = i - (N + 1) // 2
+    where N is the number of grid points in the corresponding direction.
+    This centers the mesh at zero for odd values and straddles zero for even values.
+    """
+    nx, ny = nr_par
+    R_list = []
+    w_list = []
+
+    for j in range(1, ny + 1):
+        for i in range(1, nx + 1):
+            R1 = i - (nx + 1) // 2
+            R2 = j - (ny + 1) // 2
+            R_list.append((R1, R2))
+            w_list.append(1.0)
+
+    ivr = np.array(R_list, dtype=int)
+    wr = np.array(w_list, dtype=np.float64)
+
+    counter = len(ivr)
+    i = 0
+    while i < counter:
+        R = ivr[i]
+        found = np.any(np.all(ivr[:counter] == -R, axis=1))
+        if not found:
+            ivr = np.vstack([ivr, -R])
+            wr = np.append(wr, 0.5 * wr[i])
+            wr[i] *= 0.5
+            counter += 1
+        i += 1
+
+    ivr_par = ivr.T  # shape (2, nR)
+    return ivr_par, wr
+
+
 class KpointsData:
     """
     Encapsulates all k-point and R-point related arrays and computes memory usage.
