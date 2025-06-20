@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Optional
+from PAOFLOW_QTpy.utils.timing import global_timing
 
 
 def hamiltonian_setup(
@@ -46,6 +47,8 @@ def hamiltonian_setup(
     This function modifies the `aux` attribute in-place for each allocated block:
         `aux = (E - shift) * S[..., ik] - H[..., ik] - sgm[..., ik, ie_bl]`
     """
+    global_timing.start("hamiltonian_setup")
+
     omega = egrid[ie_g]
     ie_bl = ie_buff if ie_buff is not None else 1
 
@@ -73,3 +76,5 @@ def hamiltonian_setup(
 
         block.aux = aux
         block.update(ie=ie_g, ik=ik, ie_buff=ie_bl)
+
+    global_timing.stop("hamiltonian_setup")

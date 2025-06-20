@@ -25,11 +25,14 @@ from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
 from PAOFLOW_QTpy.workspace import Workspace
+from PAOFLOW_QTpy.utils.timing import global_timing
 
 comm = MPI.COMM_WORLD
 
 
 def main():
+    global_timing.start("conductor")
+
     yaml_file = "./conductor.yaml"
     data_dict = load_summary_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
@@ -50,6 +53,7 @@ def main():
     startup("conductor.py")
     write_header("Conductor Initialization")
 
+    global_timing.start("atmproj_to_internal")
     hk_data = parse_atomic_proj(
         file_proj=datafile_C,
         work_dir=work_dir,
@@ -59,6 +63,7 @@ def main():
         do_orthoovp=do_orthoovp,
         write_intermediate=True,
     )
+    global_timing.stop("atmproj_to_internal")
 
     data_dict["nk_par"], data_dict["nr_par"] = initialize_meshsize(
         nr_full=hk_data["nr"], transport_dir=data_dict["transport_dir"]
@@ -98,9 +103,13 @@ def main():
     memory_tracker = MemoryTracker()
 
     smearing_data = SmearingData(smearing_func=smearing_func)
+
+    global_timing.start("smearing_init")
     smearing_data.initialize(
         smearing_type="lorentzian", delta=1e-5, delta_ratio=5e-3, xmax=25.0
     )
+    global_timing.stop("smearing_init")
+
     memory_tracker.register_section(
         "smearing", smearing_data.memory_usage, is_allocated=True
     )
@@ -129,7 +138,12 @@ def main():
         lambda: ham_sys.memusage("corr"),
         is_allocated=ham_sys.allocated,
     )
+
+    global_timing.start("cft_1z")
     table_par = compute_fourier_phase_table(vkpts=vkpt_par3D, ivr_par=ivr_par3D)
+    global_timing.stop("cft_1z")
+
+    global_timing.start("hamiltonian_init")
     leads_are_identical = initialize_hamiltonian_blocks(
         ham_system=ham_sys,
         ivr_par3D=ivr_par3D.T,
@@ -144,6 +158,8 @@ def main():
         transport_dir=data_dict["transport_dir"],
         calculation_type=calculation_type,
     )
+    global_timing.stop("hamiltonian_init")
+
     data_dict["leads_are_identical"] = leads_are_identical
 
     workspace = Workspace()
@@ -166,6 +182,8 @@ def main():
     write_header("Frequency Loop")
 
     data_dict["_freqloop_start_time"] = perf_counter()
+
+    global_timing.start("do_conductor")
     conduct, dos, conduct_k, dos_k = run_conductor(
         data_dict=data_dict,
         ne=data_dict["ne"],
@@ -195,6 +213,7 @@ def main():
         transfer_thr=data_dict.get("transfer_thr", 1e-12),
         nprint=data_dict.get("nprint", 20),
     )
+    global_timing.stop("do_conductor")
 
     write_header("Writing data")
 
@@ -224,6 +243,9 @@ def main():
                     f.write("# E (eV)   doscond(E)\n")
                     for ie in range(data_dict["ne"]):
                         f.write(f"{egrid[ie]:15.9f} {dos_k[ie, ik]:15.9f}\n")
+
+    global_timing.stop("conductor")
+    global_timing.report()
 
 
 if __name__ == "__main__":

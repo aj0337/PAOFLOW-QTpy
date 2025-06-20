@@ -7,6 +7,7 @@ from PAOFLOW_QTpy.operator_blc import OperatorBlock
 from PAOFLOW_QTpy.io.iotk_reader import IOTKReader
 from PAOFLOW_QTpy.parsers.parser_base import parse_index_array
 from PAOFLOW_QTpy.fourier_par import fourier_transform_real_to_kspace
+from PAOFLOW_QTpy.utils.timing import global_timing
 
 
 def read_matrix(
@@ -56,6 +57,7 @@ def read_matrix(
     the transport axis to obtain the k-resolved operator block.
 
     """
+    global_timing.start("read_matrix")
 
     if not opr.allocated:
         raise RuntimeError("OperatorBlock is not allocated")
@@ -185,3 +187,5 @@ def read_matrix(
 
     opr.H = fourier_transform_real_to_kspace(A, opr.wr_par, opr.table_par)
     opr.S = fourier_transform_real_to_kspace(S, opr.wr_par, opr.table_par)
+
+    global_timing.stop("read_matrix")
