@@ -68,9 +68,9 @@ FileFormat = Literal[
 
 
 class ConductorData(PydanticBaseModel):
-    dimL: PositiveInt = 1
-    dimR: PositiveInt = 1
-    dimC: PositiveInt = 1
+    dimL: NonNegativeInt = 0
+    dimR: NonNegativeInt = 1
+    dimC: NonNegativeInt = 0
     transport_dir: Annotated[int, conint(ge=1, le=3)] = 0
     calculation_type: CalculationType = "conductor"
     conduct_formula: ConductFormula = "landauer"
@@ -182,14 +182,15 @@ class ConductorData(PydanticBaseModel):
             #     raise ValueError("Unable to find %s" % self.datafile_R)
 
         else:
-            if self.dimL != 0:
-                raise ValueError("dimL should not be specified")
-            if self.dimR != 0:
-                raise ValueError("dimR should not be specified")
-            if len(self.datafile_L) != 0:
-                raise ValueError("datafile_L should not be specified")
-            if len(self.datafile_R) != 0:
-                raise ValueError("datafile_R should not be specified")
+            if self.dimL != 1 or self.dimR != 1:
+                raise ValueError("dimL and dimR should not be set in bulk mode")
+            if len(self.datafile_L.strip()) != 0:
+                raise ValueError("datafile_L should not be specified in bulk mode")
+            if len(self.datafile_R.strip()) != 0:
+                raise ValueError("datafile_R should not be specified in bulk mode")
+
+            self.dimL = self.dimC
+            self.dimR = self.dimC
 
         if (
             self.conduct_formula != "landauer"
