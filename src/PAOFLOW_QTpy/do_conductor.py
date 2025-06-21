@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import time
 
-from PAOFLOW_QTpy.io.write_data import write_eigenchannels
+from PAOFLOW_QTpy.io.write_data import write_eigenchannels, write_operator_xml
 from PAOFLOW_QTpy.green import compute_conductor_green_function
 from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
@@ -44,6 +44,10 @@ def run_conductor(
     fail_limit: int = 10,
     verbose: bool = False,
     nprint: int = 20,
+    write_gf: bool = True,
+    gf_filename: str = "greenf.xml",
+    write_lead_sgm: bool = True,
+    lead_sgm_prefix: str = "lead",
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Main routine for computing the quantum conductance and DOS over energy grid.
@@ -78,6 +82,7 @@ def run_conductor(
         k-resolved density of states values.
 
     """
+
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -91,6 +96,20 @@ def run_conductor(
     conduct_k = np.zeros((1 + neigchn, nkpts_par, ne), dtype=np.float64)
     dos = np.zeros(ne, dtype=np.float64)
     dos_k = np.zeros((ne, nkpts_par), dtype=np.float64)
+
+    gR = (
+        np.zeros((ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128)
+        if write_gf
+        else None
+    )
+
+    if write_lead_sgm:
+        sigma_L_arr = np.zeros(
+            (ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128
+        )
+        sigma_R_arr = np.zeros(
+            (ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128
+        )
 
     ie_start, ie_end = divide_work(0, ne - 1, rank, size)
 
@@ -144,6 +163,14 @@ def run_conductor(
             diag_imag = np.imag(np.diagonal(gC))
             dos_k[ie_g, ik] = -wk_par[ik] * np.sum(diag_imag) / np.pi
             dos[ie_g] += dos_k[ie_g, ik]
+
+            if write_gf:
+                gR[ie_g] += wk_par[ik] * gC[None, ...]
+
+            if write_lead_sgm:
+                sigma_L_arr[ie_g] = sigma_L
+                if not surface:
+                    sigma_R_arr[ie_g] = sigma_R
 
             gamma_L = 1j * (sigma_L - sigma_L.conj().T)
             gamma_R = 1j * (sigma_R - sigma_R.conj().T)
@@ -204,5 +231,44 @@ def run_conductor(
     comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
+
+    if write_gf and rank == 0:
+        grid = np.zeros((ne, 4))
+        grid[:, 0] = egrid
+        write_operator_xml(
+            filename=gf_filename,
+            operator_matrix=gR,
+            ivr=data_dict["ivr_par3D"],
+            grid=grid,
+            dimwann=dimC,
+            dynamical=True,
+            analyticity="retarded",
+            eunits="eV",
+        )
+
+    if write_lead_sgm and rank == 0:
+        grid = np.zeros((ne, 4))
+        grid[:, 0] = egrid
+        write_operator_xml(
+            filename=f"{lead_sgm_prefix}_L_sgm.xml",
+            operator_matrix=sigma_L_arr,
+            ivr=data_dict["ivr_par3D"],
+            grid=grid,
+            dimwann=dimC,
+            dynamical=True,
+            analyticity="retarded",
+            eunits="eV",
+        )
+        if not surface:
+            write_operator_xml(
+                filename=f"{lead_sgm_prefix}_R_sgm.xml",
+                operator_matrix=sigma_R_arr,
+                ivr=data_dict["ivr_par3D"],
+                grid=grid,
+                dimwann=dimC,
+                dynamical=True,
+                analyticity="retarded",
+                eunits="eV",
+            )
 
     return conduct, dos, conduct_k, dos_k

@@ -6,6 +6,8 @@ from typing import Dict
 
 import logging
 import numpy.typing as npt
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
@@ -407,3 +409,53 @@ def write_kham(
             f.write(f"    </SPIN.{isp + 1}>\n")
 
     f.write("  </HAMILTONIAN>\n")
+
+
+def complex_matrix_to_text(matrix: np.ndarray) -> str:
+    return "\n".join(
+        " ".join(f"({v.real:.10e},{v.imag:.10e})" for v in row) for row in matrix
+    )
+
+
+def write_operator_xml(
+    filename: str,
+    operator_matrix: np.ndarray,
+    ivr: np.ndarray,
+    grid: np.ndarray,
+    dimwann: int,
+    dynamical: bool,
+    analyticity: str,
+    eunits: str = "eV",
+) -> None:
+    nomega, nrtot, _, _ = operator_matrix.shape
+    iomg_s, iomg_e = 1, nomega
+
+    root = ET.Element("OPERATOR")
+
+    data_attr = {
+        "dimwann": str(dimwann),
+        "nrtot": str(nrtot),
+        "dynamical": str(dynamical).upper(),
+        "nomega": str(nomega),
+        "iomg_s": str(iomg_s),
+        "iomg_e": str(iomg_e),
+        "analyticity": analyticity,
+    }
+    ET.SubElement(root, "DATA", data_attr)
+
+    ivr_el = ET.SubElement(root, "IVR")
+    ivr_el.text = "\n" + "\n".join(" ".join(map(str, row)) for row in ivr)
+
+    grid_el = ET.SubElement(root, "GRID", {"units": eunits})
+    grid_el.text = "\n" + "\n".join(" ".join(f"{x:.10e}" for x in row) for row in grid)
+
+    for ie in range(nomega):
+        opr_el = ET.SubElement(root, f"OPR{ie + 1:03d}")
+        for ir in range(nrtot):
+            mat_el = ET.SubElement(opr_el, f"VR{ir + 1:03d}")
+            mat_el.text = complex_matrix_to_text(operator_matrix[ie, ir])
+
+    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
+
+    with open(filename, "w") as f:
+        f.write(xmlstr)
