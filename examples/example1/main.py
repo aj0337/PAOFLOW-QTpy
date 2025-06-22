@@ -5,7 +5,10 @@ from mpi4py import MPI
 from time import perf_counter
 
 from PAOFLOW_QTpy.do_conductor import run_conductor
-from PAOFLOW_QTpy.hamiltonian_init import initialize_hamiltonian_blocks
+from PAOFLOW_QTpy.hamiltonian_init import (
+    check_leads_are_identical,
+    initialize_hamiltonian_blocks,
+)
 from PAOFLOW_QTpy.io.startup import startup
 from PAOFLOW_QTpy.io.write_data import write_data
 from PAOFLOW_QTpy.io.write_header import write_header
@@ -144,7 +147,8 @@ def main():
     global_timing.stop("cft_1z")
 
     global_timing.start("hamiltonian_init")
-    leads_are_identical = initialize_hamiltonian_blocks(
+
+    initialize_hamiltonian_blocks(
         ham_system=ham_sys,
         ivr_par3D=ivr_par3D.T,
         wr_par=wr_par,
@@ -152,15 +156,20 @@ def main():
         datafile_C=datafile_C,
         datafile_L=datafile_L,
         datafile_R=datafile_R,
-        datafile_L_sgm=datafile_L_sgm,
-        datafile_R_sgm=datafile_R_sgm,
         ispin=data_dict["ispin"],
         transport_dir=data_dict["transport_dir"],
         calculation_type=calculation_type,
     )
+
     global_timing.stop("hamiltonian_init")
 
-    data_dict["leads_are_identical"] = leads_are_identical
+    data_dict["leads_are_identical"] = check_leads_are_identical(
+        ham_system=ham_sys,
+        datafile_L=datafile_L,
+        datafile_R=datafile_R,
+        datafile_L_sgm=datafile_L_sgm,
+        datafile_R_sgm=datafile_R_sgm,
+    )
 
     workspace = Workspace()
     workspace.allocate(
@@ -204,7 +213,7 @@ def main():
         do_eigplot=data_dict.get("do_eigplot", False),
         ie_eigplot=data_dict.get("ie_eigplot", None),
         ik_eigplot=data_dict.get("ik_eigplot", None),
-        leads_are_identical=leads_are_identical,
+        leads_are_identical=data_dict["leads_are_identical"],
         surface=data_dict.get("surface", False),
         lhave_corr=data_dict.get("lhave_corr", False),
         ldynam_corr=data_dict.get("ldynam_corr", False),

@@ -18,9 +18,7 @@ def initialize_hamiltonian_blocks(
     calculation_type: Literal["conductor", "bulk"],
     datafile_L: str = "",
     datafile_R: str = "",
-    datafile_L_sgm: str = "",
-    datafile_R_sgm: str = "",
-) -> bool:
+) -> None:
     """
     Initialize all Hamiltonian and overlap matrix blocks for the transport system.
 
@@ -42,10 +40,6 @@ def initialize_hamiltonian_blocks(
         Index (1-based) of the transport direction (1 = x, 2 = y, 3 = z).
     `calculation_type` : {"conductor", "bulk"}
         System configuration type.
-    `datafile_L_sgm` : str, optional
-        Path to the self-energy file for the left lead.
-    `datafile_R_sgm` : str, optional
-        Path to the self-energy file for the right lead.
 
     Returns
     -------
@@ -72,8 +66,6 @@ def initialize_hamiltonian_blocks(
     ham_system.allocate(ivr_par3D)
 
     # Assign 2D ivr_par to all blocks for use in read_matrix
-    ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_dir)
-
     ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_dir)
 
     for block in ham_system.blocks.values():
@@ -140,23 +132,48 @@ def initialize_hamiltonian_blocks(
                 S_k = block.S[..., ik]
                 block.S[..., ik] = 0.5 * (S_k + S_k.T.conj())
 
-    leads_are_identical = False
-    if (
-        datafile_L.strip() == datafile_R.strip()
-        and datafile_L_sgm.strip() == datafile_R_sgm.strip()
-        and all(
-            np.array_equal(
-                getattr(ham_system.blc_00L, key), getattr(ham_system.blc_00R, key)
-            )
-            for key in ("irows", "icols", "irows_sgm", "icols_sgm")
-        )
-        and all(
-            np.array_equal(
-                getattr(ham_system.blc_01L, key), getattr(ham_system.blc_01R, key)
-            )
-            for key in ("irows", "icols", "irows_sgm", "icols_sgm")
-        )
-    ):
-        leads_are_identical = True
 
-    return leads_are_identical
+def check_leads_are_identical(
+    ham_system: HamiltonianSystem,
+    datafile_L: str = "",
+    datafile_R: str = "",
+    datafile_L_sgm: str = "",
+    datafile_R_sgm: str = "",
+) -> bool:
+    """
+    Determine if left and right leads are structurally and numerically identical.
+
+    Parameters
+    ----------
+    `datafile_L` : str
+        Path to the left lead file.
+    `datafile_R` : str
+        Path to the right lead file.
+    `datafile_L_sgm` : str
+        Path to the left lead self-energy file.
+    `datafile_R_sgm` : str
+        Path to the right lead self-energy file.
+    `ham_system` : HamiltonianSystem
+        Transport Hamiltonian system with all blocks loaded.
+
+    Returns
+    -------
+    `identical` : bool
+        True if the left and right leads are identical.
+    """
+    if datafile_L.strip() != datafile_R.strip():
+        return False
+    if datafile_L_sgm.strip() != datafile_R_sgm.strip():
+        return False
+
+    for key in ("irows", "icols", "irows_sgm", "icols_sgm"):
+        if not np.array_equal(
+            getattr(ham_system.blc_00L, key), getattr(ham_system.blc_00R, key)
+        ):
+            return False
+        if not np.array_equal(
+            getattr(ham_system.blc_01L, key), getattr(ham_system.blc_01R, key)
+        ):
+            return False
+
+    return True
