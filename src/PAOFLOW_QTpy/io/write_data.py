@@ -1,13 +1,11 @@
 import numpy as np
 from pathlib import Path
 
-from typing import Dict
+from typing import Dict, Optional
 
 
 import logging
 import numpy.typing as npt
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
@@ -280,7 +278,6 @@ def write_internal_format_files(
         f.write("<Root>\n")
         f.write("  <HAMILTONIAN>\n")
 
-        # DATA tag with attributes
         f.write(
             f'    <DATA dimwann="{dim}" nkpts="{nkpts}" nspin="{nspin}" spin_component="{spin_component}" '
         )
@@ -290,13 +287,11 @@ def write_internal_format_files(
         f.write(f'have_overlap="{"T" if have_overlap else "F"}"\n')
         f.write(f'fermi_energy="{fermi_energy:.15E}"/>\n')
 
-        # DIRECT LATTICE
         f.write('    <DIRECT_LATTICE type="real" size="9" columns="3" units="bohr">\n')
         for row in avec.T:
             f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
         f.write("    </DIRECT_LATTICE>\n")
 
-        # RECIPROCAL LATTICE
         f.write(
             '    <RECIPROCAL_LATTICE type="real" size="9" columns="3" units="bohr^-1">\n'
         )
@@ -304,7 +299,6 @@ def write_internal_format_files(
             f.write(" " + "  ".join(f"{x:.15E}" for x in row) + "\n")
         f.write("    </RECIPROCAL_LATTICE>\n")
 
-        # VKPT
         f.write(
             f'    <VKPT type="real" size="{3 * nkpts}" columns="3" units="crystal">\n'
         )
@@ -313,27 +307,21 @@ def write_internal_format_files(
                 " " + "  ".join(f"{vkpts_crystal[j, i]:.15E}" for j in range(3)) + "\n"
             )
         f.write("    </VKPT>\n")
-        # WK
+
         f.write(f'    <WK type="real" size="{nkpts}">\n')
         for w in wk:
             f.write(f" {w:.15E}\n")
         f.write("    </WK>\n")
-
-        # IVR
         f.write(
             f'    <IVR type="integer" size="{3 * nrtot}" columns="3" units="crystal">\n'
         )
         for row in ivr:
             f.write(" {:10d}{:10d}{:10d} \n".format(*row))
         f.write("    </IVR>\n")
-
-        # WR
         f.write(f'    <WR type="real" size="{nrtot}">\n')
         for w in wr:
             f.write(f" {w:.15E}\n")
         f.write("    </WR>\n")
-
-        # RHAM section
         f.write("    <RHAM>\n")
         for ir in range(nrtot):
             tag = f"VR.{ir + 1}"
@@ -349,8 +337,6 @@ def write_internal_format_files(
                     f.write(f" {z.real:> .15E},{z.imag:> .15E}\n")
                 f.write(f"      </{tag}>\n")
         f.write("    </RHAM>\n")
-
-        # KHAM section
         write_kham(Hk, f)
 
         f.write("  </HAMILTONIAN>\n")
@@ -411,51 +397,147 @@ def write_kham(
     f.write("  </HAMILTONIAN>\n")
 
 
-def complex_matrix_to_text(matrix: np.ndarray) -> str:
-    return "\n".join(
-        " ".join(f"({v.real:.10e},{v.imag:.10e})" for v in row) for row in matrix
-    )
-
-
 def write_operator_xml(
     filename: str,
-    operator_matrix: np.ndarray,
-    ivr: np.ndarray,
-    grid: np.ndarray,
-    dimwann: int,
-    dynamical: bool,
-    analyticity: str,
+    operator_matrix: Optional[np.ndarray] = None,
+    ivr: Optional[np.ndarray] = None,
+    vr: Optional[np.ndarray] = None,
+    grid: Optional[np.ndarray] = None,
+    dimwann: int = 0,
+    dynamical: bool = False,
+    analyticity: str = "",
     eunits: str = "eV",
+    nomega: Optional[int] = None,
+    iomg_s: Optional[int] = None,
+    iomg_e: Optional[int] = None,
+    nrtot: Optional[int] = None,
 ) -> None:
-    nomega, nrtot, _, _ = operator_matrix.shape
-    iomg_s, iomg_e = 1, nomega
+    """
+    Write operator data to XML file in the exact format produced by Fortran iotk library.
 
-    root = ET.Element("OPERATOR")
+    This function mimics the Fortran subroutine operator_write_aux exactly, including
+    formatting, spacing, and element ordering.
+    """
 
-    data_attr = {
-        "dimwann": str(dimwann),
-        "nrtot": str(nrtot),
-        "dynamical": str(dynamical).upper(),
-        "nomega": str(nomega),
-        "iomg_s": str(iomg_s),
-        "iomg_e": str(iomg_e),
-        "analyticity": analyticity,
-    }
-    ET.SubElement(root, "DATA", data_attr)
+    if dynamical and grid is None:
+        raise ValueError("grid must be present for dynamical operators")
+    if dynamical and not analyticity:
+        raise ValueError("analyticity must be present for dynamical operators")
+    if vr is None and ivr is None:
+        raise ValueError("both VR and IVR not present")
+    if not dynamical and nomega is not None and nomega != 1:
+        raise ValueError("invalid nomega for static operator")
 
-    ivr_el = ET.SubElement(root, "IVR")
-    ivr_el.text = "\n" + "\n".join(" ".join(map(str, row)) for row in ivr)
-
-    grid_el = ET.SubElement(root, "GRID", {"units": eunits})
-    grid_el.text = "\n" + "\n".join(" ".join(f"{x:.10e}" for x in row) for row in grid)
-
-    for ie in range(nomega):
-        opr_el = ET.SubElement(root, f"OPR{ie + 1:03d}")
-        for ir in range(nrtot):
-            mat_el = ET.SubElement(opr_el, f"VR{ir + 1:03d}")
-            mat_el.text = complex_matrix_to_text(operator_matrix[ie, ir])
-
-    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="  ")
+    if operator_matrix is not None:
+        if nomega is None:
+            nomega = operator_matrix.shape[0]
+        if nrtot is None:
+            nrtot = operator_matrix.shape[1]
+    else:
+        if nomega is None:
+            nomega = 1
+        if nrtot is None:
+            nrtot = len(ivr) if ivr is not None else len(vr)
 
     with open(filename, "w") as f:
-        f.write(xmlstr)
+        f.write('<?xml version="1.0"?>\n')
+
+        f.write("<OPERATOR>\n")
+
+        f.write("  <DATA")
+        f.write(f' dimwann="{dimwann}"')
+        f.write(f' nrtot="{nrtot}"')
+        f.write(f' dynamical="{str(dynamical).upper()}"')
+        f.write(f' nomega="{nomega}"')
+
+        if iomg_s is not None:
+            f.write(f' iomg_s="{iomg_s}"')
+        if iomg_e is not None:
+            f.write(f' iomg_e="{iomg_e}"')
+
+        if dynamical:
+            f.write(f' analyticity="{analyticity}"')
+
+        f.write(" />\n")
+
+        if vr is not None:
+            f.write("  <VR>\n")
+
+            rows, cols = vr.shape
+            for i in range(rows):
+                for j in range(cols):
+                    val = vr[i, j]
+                    f.write(f"    {val.real:18.15E},{val.imag:18.15E}\n")
+            f.write("  </VR>\n")
+
+        if ivr is not None:
+            f.write("  <IVR>\n")
+            rows, cols = ivr.shape
+            for i in range(rows):
+                f.write("    ")
+                for j in range(cols):
+                    if j > 0:
+                        f.write(" ")
+                    f.write(f"{ivr[i, j]:8d}")
+                f.write("\n")
+            f.write("  </IVR>\n")
+
+        if grid is not None:
+            f.write("  <GRID")
+            if eunits:
+                f.write(f' units="{eunits}"')
+            f.write(">\n")
+
+            grid_flat = np.array(grid).flatten()
+
+            for i in range(len(grid_flat)):
+                if i % 4 == 0:
+                    if i > 0:
+                        f.write(" \n")
+
+                else:
+                    f.write(" ")
+
+                f.write(f"{grid_flat[i]:18.15E}")
+            if len(grid_flat) > 0:
+                f.write(" \n")
+            f.write("  </GRID>\n")
+
+        if operator_matrix is not None:
+            for ie in range(nomega):
+                f.write(f"  <OPR.{ie + 1}>\n")
+
+                for ir in range(nrtot):
+                    matrix = operator_matrix[ie, ir]
+                    rows, cols = matrix.shape
+                    total_elements = rows * cols
+
+                    f.write(
+                        f'    <VR.{ir + 1} type="complex" size="{total_elements}">\n'
+                    )
+
+                    for i in range(rows):
+                        for j in range(cols):
+                            val = matrix[i, j]
+                            f.write(f"{val.real: .15E},{val.imag: .15E}\n")
+
+                    f.write(f"    </VR.{ir + 1}>\n")
+
+                f.write(f"  </OPR.{ie + 1}>\n")
+
+            f.write("</OPERATOR>\n")
+
+
+def complex_matrix_to_text(matrix: np.ndarray) -> str:
+    """Convert complex matrix to text format matching Fortran output."""
+    rows, cols = matrix.shape
+    lines = []
+
+    for i in range(rows):
+        row_parts = []
+        for j in range(cols):
+            val = matrix[i, j]
+            row_parts.append(f"{val.real:18.15E},{val.imag:18.15E}")
+        lines.append("      " + " ".join(row_parts))
+
+    return "\n" + "\n".join(lines) + "\n    "

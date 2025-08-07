@@ -233,13 +233,11 @@ def run_conductor(
     comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
 
     if write_gf and rank == 0:
-        grid = np.zeros((ne, 4))
-        grid[:, 0] = egrid
         write_operator_xml(
             filename=gf_filename,
             operator_matrix=gR,
             ivr=data_dict["ivr_par3D"],
-            grid=grid,
+            grid=egrid,
             dimwann=dimC,
             dynamical=True,
             analyticity="retarded",
@@ -247,13 +245,11 @@ def run_conductor(
         )
 
     if write_lead_sgm and rank == 0:
-        grid = np.zeros((ne, 4))
-        grid[:, 0] = egrid
         write_operator_xml(
             filename=f"{lead_sgm_prefix}_L_sgm.xml",
             operator_matrix=sigma_L_arr,
             ivr=data_dict["ivr_par3D"],
-            grid=grid,
+            grid=egrid,
             dimwann=dimC,
             dynamical=True,
             analyticity="retarded",
@@ -264,7 +260,7 @@ def run_conductor(
                 filename=f"{lead_sgm_prefix}_R_sgm.xml",
                 operator_matrix=sigma_R_arr,
                 ivr=data_dict["ivr_par3D"],
-                grid=grid,
+                grid=egrid,
                 dimwann=dimC,
                 dynamical=True,
                 analyticity="retarded",
