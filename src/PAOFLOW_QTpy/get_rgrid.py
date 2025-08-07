@@ -48,10 +48,12 @@ def grids_get_rgrid(
     for k in range(nr3):
         for j in range(nr2):
             for i in range(nr1):
+                i1, j1, k1 = i + 1, j + 1, k + 1
+
                 r = (
-                    i - (nr1) // 2,
-                    j - (nr2) // 2,
-                    k - (nr3) // 2,
+                    i1 - (nr1 + 1) // 2,
+                    j1 - (nr2 + 1) // 2,
+                    k1 - (nr3 + 1) // 2,
                 )
                 r_grid.append(r)
                 weights.append(1.0)
