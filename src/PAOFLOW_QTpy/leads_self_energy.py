@@ -3,96 +3,6 @@ from PAOFLOW_QTpy.green import compute_surface_green_function
 from PAOFLOW_QTpy.transfer import compute_surface_transfer_matrices
 
 
-def compute_lead_self_energy(
-    h_eff: np.ndarray,
-    s_eff: np.ndarray,
-    h_coupling: np.ndarray,
-    delta: float = 1e-5,
-    direction: str = "right",
-    niterx: int = 200,
-    transfer_thr: float = 1e-12,
-    fail_counter: dict = None,
-    fail_limit: int = 10,
-    verbose: bool = False,
-) -> tuple[np.ndarray, int]:
-    """
-    Compute the self-energy matrix for a semi-infinite lead using surface Green's function.
-
-    Parameters
-    ----------
-    `h_eff` : np.ndarray
-        On-site Hamiltonian block H_00.
-    `s_eff` : np.ndarray
-        Overlap matrix S_00.
-    `h_coupling` : np.ndarray
-        Inter-cell hopping matrix H_01 (to the adjacent unit cell).
-    `delta` : float
-        Imaginary broadening parameter.
-    `direction` : {'right', 'left'}
-        Indicates which semi-infinite lead is being modeled.
-    `niterx` : int
-        Maximum number of iterations for Sancho-Rubio method.
-    `transfer_thr` : float
-        Convergence threshold for transfer matrices.
-    `fail_counter` : dict
-        Optional mutable dict to track convergence failures.
-    `fail_limit` : int
-        Maximum number of allowed convergence failures.
-    `verbose` : bool
-        Whether to log progress and warnings.
-
-    Returns
-    -------
-    `sigma` : np.ndarray
-        Self-energy matrix of the lead (same shape as h_eff).
-    `niter` : int
-        Number of iterations used in the Sancho-Rubio recursion.
-
-    Notes
-    -----
-    This function constructs the lead self-energy Σ(E) for a semi-infinite system
-    using the expression:
-
-        Σ(E) = H_01† · G_surf(E) · H_01      (for right lead)
-        Σ(E) = H_01 · G_surf(E) · H_01†      (for left lead)
-
-    where:
-    - G_surf(E) is the surface Green's function of the lead, defined as
-
-
-        G_surf(E) = [E·S - H - H_01·T]⁻¹              (right surface)
-                  = [E·S - H - H_01†·T†]⁻¹            (left surface)
-
-    - T and T† are the lead transfer matrices computed using the Sancho-Rubio method.
-
-    """
-
-    tot, tott, niter = compute_surface_transfer_matrices(
-        h_eff,
-        s_eff,
-        h_coupling,
-        delta=delta,
-        niterx=niterx,
-        transfer_thr=transfer_thr,
-        fail_counter=fail_counter,
-        fail_limit=fail_limit,
-        verbose=verbose,
-    )
-
-    igreen = 1 if direction == "right" else -1
-
-    g_surf = compute_surface_green_function(
-        h_eff, s_eff, h_coupling, tot, tott, igreen=igreen, delta=delta
-    )
-
-    if direction == "right":
-        sigma = h_coupling.conj().T @ g_surf @ h_coupling
-    else:
-        sigma = h_coupling @ g_surf @ h_coupling.conj().T
-
-    return sigma, niter
-
-
 def build_self_energies_from_blocks(
     blc_00R: np.ndarray,
     blc_01R: np.ndarray,
@@ -100,6 +10,8 @@ def build_self_energies_from_blocks(
     blc_01L: np.ndarray,
     blc_CR: np.ndarray,
     blc_LC: np.ndarray,
+    s00R: np.ndarray,
+    s00L: np.ndarray,
     leads_are_identical: bool,
     delta: float = 1e-5,
     niterx: int = 200,
@@ -125,6 +37,10 @@ def build_self_energies_from_blocks(
         Coupling block between conductor and right lead.
     `blc_LC` : (nC, nL) complex ndarray
         Coupling block between conductor and left lead.
+    `s00R` : (nR, nR) complex ndarray
+        Overlap matrix S_00 of the right lead.
+    `s00L` : (nL, nL) complex ndarray
+        Overlap matrix S_00 of the left lead.
     `leads_are_identical` : bool
         If True, reuse right lead calculation for left.
     `delta` : float
@@ -150,10 +66,18 @@ def build_self_energies_from_blocks(
         Iteration count for right lead.
     `niter_L` : int
         Iteration count for left lead.
+
+    Notes
+    -----
+    The conductor self-energies are assembled as:
+
+        Σ_R = H_CR · G_surf(R) · H_CR†
+        Σ_L = H_LC† · G_surf(L) · H_LC
+
     """
-    gR, niter_R = compute_lead_self_energy(
+    gR, niter_R = compute_lead_surface_green_function(
         blc_00R,
-        np.eye(blc_00R.shape[0]),
+        s00R,
         blc_01R,
         delta=delta,
         direction="right",
@@ -166,9 +90,9 @@ def build_self_energies_from_blocks(
     sigma_R = blc_CR @ gR @ blc_CR.conj().T
 
     if leads_are_identical:
-        gL, niter_L = compute_lead_self_energy(
+        gL, niter_L = compute_lead_surface_green_function(
             blc_00R,
-            np.eye(blc_00R.shape[0]),
+            s00R,
             blc_01R,
             delta=delta,
             direction="left",
@@ -179,9 +103,9 @@ def build_self_energies_from_blocks(
             verbose=verbose,
         )
     else:
-        gL, niter_L = compute_lead_self_energy(
+        gL, niter_L = compute_lead_surface_green_function(
             blc_00L,
-            np.eye(blc_00L.shape[0]),
+            s00L,
             blc_01L,
             delta=delta,
             direction="left",
@@ -195,3 +119,78 @@ def build_self_energies_from_blocks(
     sigma_L = blc_LC.conj().T @ gL @ blc_LC
 
     return sigma_R, sigma_L, niter_R, niter_L
+
+
+def compute_lead_surface_green_function(
+    h_eff: np.ndarray,
+    s_eff: np.ndarray,
+    h_coupling: np.ndarray,
+    delta: float = 1e-5,
+    direction: str = "right",
+    niterx: int = 200,
+    transfer_thr: float = 1e-12,
+    fail_counter: dict = None,
+    fail_limit: int = 10,
+    verbose: bool = False,
+) -> tuple[np.ndarray, int]:
+    """
+    Compute the **surface Green's function** for a semi-infinite lead
+
+    Parameters
+    ----------
+    `h_eff` : np.ndarray
+        On-site effective block (E·S - H) for the lead principal layer.
+    `s_eff` : np.ndarray
+        Overlap matrix S_00 of the lead.
+    `h_coupling` : np.ndarray
+        Inter-cell coupling block (effective form consistent with `h_eff`).
+    `delta` : float
+        Imaginary broadening parameter.
+    `direction` : {'right', 'left'}
+        Indicates which semi-infinite lead is being modeled.
+    `niterx` : int
+        Maximum number of iterations for Sancho-Rubio method.
+    `transfer_thr` : float
+        Convergence threshold for transfer matrices.
+    `fail_counter` : dict
+        Optional mutable dict to track convergence failures.
+    `fail_limit` : int
+        Maximum number of allowed convergence failures.
+    `verbose` : bool
+        Whether to log progress and warnings.
+
+    Returns
+    -------
+    `g_surf` : np.ndarray
+        Surface Green's function of the lead principal layer.
+    `niter` : int
+        Number of iterations used in the Sancho-Rubio recursion.
+
+    Notes
+    -----
+    This routine now returns the surface Green’s function ``G_surf(E)``.
+
+        Right surface: G_surf = [ (E+iδ)·S - H - H_01·T ]⁻¹
+        Left  surface: G_surf = [ (E+iδ)·S - H - H_01†·T† ]⁻¹
+
+    where T and T† are transfer matrices from the Sancho–Rubio iteration.
+    """
+    tot, tott, niter = compute_surface_transfer_matrices(
+        h_eff,
+        s_eff,
+        h_coupling,
+        delta=delta,
+        niterx=niterx,
+        transfer_thr=transfer_thr,
+        fail_counter=fail_counter,
+        fail_limit=fail_limit,
+        verbose=verbose,
+    )
+
+    igreen = 1 if direction == "right" else -1
+
+    g_surf = compute_surface_green_function(
+        h_eff, s_eff, h_coupling, tot, tott, igreen=igreen, delta=delta
+    )
+
+    return g_surf, niter
