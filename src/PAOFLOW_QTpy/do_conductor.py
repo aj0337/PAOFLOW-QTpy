@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 from mpi4py import MPI
-
 import numpy as np
 import numpy.typing as npt
 import time
@@ -14,6 +13,7 @@ from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
 from PAOFLOW_QTpy.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
+from PAOFLOW_QTpy.compute_rham import compute_rham
 
 
 def run_conductor(
@@ -44,72 +44,133 @@ def run_conductor(
     fail_limit: int = 10,
     verbose: bool = False,
     nprint: int = 20,
-    write_gf: bool = True,
+    write_gf: bool = True,  # TODO Make variable an input from yaml file
     gf_filename: str = "greenf.xml",
-    write_lead_sgm: bool = True,
+    write_lead_sgm: bool = False,  # TODO Make variable an input from yaml file
     lead_sgm_prefix: str = "lead",
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Main routine for computing the quantum conductance and DOS over energy grid.
+    Compute conductance and DOS over an energy grid, write optional operator data.
 
     Parameters
     ----------
+    `data_dict` : dict
+        Must provide ``nrtot_par``, ``ivr_par3D``, ``vr_par3D``, and ``_freqloop_start_time``.
     `ne` : int
         Number of energy points.
     `egrid` : ndarray
-        1D array of energy values.
+        Energy grid of shape ``(ne,)`` in eV.
     `nkpts_par` : int
         Number of parallel k-points.
     `shifts` : dict
-        Dictionary with keys 'shift_L', 'shift_C', 'shift_R', 'shift_C_corr'.
+        Contains ``shift_L``, ``shift_C``, ``shift_R``, and optionally ``shift_C_corr``.
     `blc_blocks` : dict
-        Dictionary mapping block names to OperatorBlock instances.
+        Mapping of block names to OperatorBlock instances: ``blc_00L``, ``blc_01L``, ``blc_00R``,
+        ``blc_01R``, ``blc_00C``, ``blc_LC``, ``blc_CR``.
     `wk_par` : ndarray
-        k-point weights.
+        k-point weights of shape ``(nkpts_par,)``.
+    `vkpt_par3D` : ndarray
+        k-points in Cartesian coordinates of shape ``(3, nkpts_par)``.
+    `transport_dir` : int
+        Transport direction index.
     `conduct_formula` : {'landauer', 'generalized'}
-        Which conductance formula to use.
-    ...
+        Choice of transmittance formula.
+    `do_eigenchannels` : bool
+        Whether to compute eigenchannel-resolved conductance.
+    `neigchnx` : int
+        Maximum number of eigenchannels to keep.
+    `do_eigplot` : bool
+        Whether to write eigenchannel auxiliary data for a specific ``(ie, ik)``.
+    `ie_eigplot` : int or None
+        Energy index for eigenchannel snapshot.
+    `ik_eigplot` : int or None
+        k-point index for eigenchannel snapshot.
+    `leads_are_identical` : bool
+        Reuse right-lead solution for left lead if True.
+    `surface` : bool
+        Compute projected surface Green's function if True.
+    `lhave_corr` : bool
+        Placeholder for correlated calculations.
+    `ldynam_corr` : bool
+        Placeholder for dynamical correlations.
+    `delta` : float
+        Positive infinitesimal for Green's function.
+    `niterx` : int
+        Maximum iterations for surface transfer matrix solver.
+    `transfer_thr` : float
+        Convergence threshold for transfer matrices.
+    `fail_counter` : dict or None
+        Optional failure tracking dictionary.
+    `fail_limit` : int
+        Maximum consecutive failures allowed before aborting.
+    `verbose` : bool
+        Verbose iteration logs for solvers.
+    `nprint` : int
+        Frequency of progress prints.
+    `write_gf` : bool
+        Write conductor Green's function to disk if True.
+    `gf_filename` : str
+        Output filename for conductor Green's function.
+    `write_lead_sgm` : bool
+        Write lead self-energies to disk if True.
+    `lead_sgm_prefix` : str
+        Prefix for lead self-energy output filenames.
 
     Returns
     -------
-    `conductance` : ndarray
-        Total and channel-resolved conductance values vs energy.
+    `conduct` : ndarray
+        Array of shape ``(1 + neigchn, ne)`` with total and channel-resolved conductance.
     `dos` : ndarray
-        Density of states vs energy.
-    `conductance_k` : ndarray
-        k-resolved conductance values.
+        Array of shape ``(ne,)`` with DOS of the conductor.
+    `conduct_k` : ndarray
+        Array of shape ``(1 + neigchn, nkpts_par, ne)`` with k-resolved conductance.
     `dos_k` : ndarray
-        k-resolved density of states values.
+        Array of shape ``(ne, nkpts_par)`` with k-resolved DOS.
 
+    Notes
+    -----
+    The real-space operators written to disk are built via the inverse Bloch transform
+
+    .. math::
+
+        O(R) = \\sum_{k} w_k\\,e^{-i k\\cdot R}\\,O(k)
+
+    where ``O`` is any operator defined at each k-point (e.g., the retarded Green’s
+    function of the conductor ``G^r`` or the lead self-energies ``\\Sigma_{L,R}``),
+    ``w_k`` are the integration weights, and ``R`` are the real-space lattice vectors
+    matching ``ivr_par3D``/``vr_par3D``.
     """
-
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     dimC = blc_blocks["blc_00C"].dim1
     dimR = blc_blocks["blc_00R"].dim1
-
-    neigchn = min(dimC, dimR, dimC, neigchnx) if do_eigenchannels else 0
+    dimL = blc_blocks["blc_00L"].dim1
+    neigchn = min(dimC, dimR, dimL, neigchnx) if do_eigenchannels else 0
 
     conduct = np.zeros((1 + neigchn, ne), dtype=np.float64)
     conduct_k = np.zeros((1 + neigchn, nkpts_par, ne), dtype=np.float64)
     dos = np.zeros(ne, dtype=np.float64)
     dos_k = np.zeros((ne, nkpts_par), dtype=np.float64)
 
-    gR = (
-        np.zeros((ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128)
-        if write_gf
+    nrtot_par = int(data_dict["nrtot_par"])
+    ivr_par3D = data_dict["ivr_par3D"]
+    vr_par3D = 2 * np.pi * ivr_par3D.astype(np.float64)
+
+    gf_out = (
+        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128) if write_gf else None
+    )
+    rsgmL_out = (
+        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128)
+        if write_lead_sgm
         else None
     )
-
-    if write_lead_sgm:
-        sigma_L_arr = np.zeros(
-            (ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128
-        )
-        sigma_R_arr = np.zeros(
-            (ne, data_dict["nrtot_par"], dimC, dimC), dtype=np.complex128
-        )
+    rsgmR_out = (
+        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128)
+        if write_lead_sgm
+        else None
+    )
 
     ie_start, ie_end = divide_work(0, ne - 1, rank, size)
 
@@ -118,6 +179,20 @@ def run_conductor(
 
         if (ie_g % nprint == 0 or ie_g == ie_start or ie_g == ie_end) and rank == 0:
             print(f"  Computing E({ie_g:6d}) = {egrid[ie_g]:12.5f} eV")
+
+        gC_k = (
+            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128) if write_gf else None
+        )
+        sgmL_k = (
+            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128)
+            if write_lead_sgm
+            else None
+        )
+        sgmR_k = (
+            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128)
+            if write_lead_sgm
+            else None
+        )
 
         for ik in range(nkpts_par):
             hamiltonian_setup(
@@ -139,6 +214,8 @@ def run_conductor(
                 blc_01L=blc_blocks["blc_01L"].aux,
                 blc_CR=blc_blocks["blc_CR"].aux,
                 blc_LC=blc_blocks["blc_LC"].aux,
+                s00R=blc_blocks["blc_00R"].S[..., ik],
+                s00L=blc_blocks["blc_00L"].S[..., ik],
                 leads_are_identical=leads_are_identical,
                 delta=delta,
                 niterx=niterx,
@@ -165,12 +242,10 @@ def run_conductor(
             dos[ie_g] += dos_k[ie_g, ik]
 
             if write_gf:
-                gR[ie_g] += wk_par[ik] * gC[None, ...]
-
+                gC_k[ik] = gC
             if write_lead_sgm:
-                sigma_L_arr[ie_g] = sigma_L
-                if not surface:
-                    sigma_R_arr[ie_g] = sigma_R
+                sgmL_k[ik] = sigma_L
+                sgmR_k[ik] = sigma_R
 
             gamma_L = 1j * (sigma_L - sigma_L.conj().T)
             gamma_R = 1j * (sigma_R - sigma_R.conj().T)
@@ -227,16 +302,46 @@ def run_conductor(
             elapsed = time.perf_counter() - data_dict["_freqloop_start_time"]
             print(f"\n{'Total time spent up to now :':>40} {elapsed:10.2f} secs\n")
 
+        if write_gf:
+            for ir in range(nrtot_par):
+                gf_out[ie_g, ir] = compute_rham(
+                    rvec=vr_par3D[:, ir],
+                    Hk=gC_k,
+                    kpts=vkpt_par3D.T,
+                    wk=wk_par,
+                )
+
+        if write_lead_sgm:
+            for ir in range(nrtot_par):
+                rsgmL_out[ie_g, ir] = compute_rham(
+                    rvec=vr_par3D[:, ir],
+                    Hk=sgmL_k,
+                    kpts=vkpt_par3D.T,
+                    wk=wk_par,
+                )
+                rsgmR_out[ie_g, ir] = compute_rham(
+                    rvec=vr_par3D[:, ir],
+                    Hk=sgmR_k,
+                    kpts=vkpt_par3D.T,
+                    wk=wk_par,
+                )
+
     comm.Allreduce(MPI.IN_PLACE, conduct, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
     comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
 
+    if write_gf:
+        comm.Allreduce(MPI.IN_PLACE, gf_out, op=MPI.SUM)
+    if write_lead_sgm:
+        comm.Allreduce(MPI.IN_PLACE, rsgmL_out, op=MPI.SUM)
+        comm.Allreduce(MPI.IN_PLACE, rsgmR_out, op=MPI.SUM)
+
     if write_gf and rank == 0:
         write_operator_xml(
             filename=gf_filename,
-            operator_matrix=gR,
-            ivr=data_dict["ivr_par3D"],
+            operator_matrix=gf_out,
+            ivr=ivr_par3D,
             grid=egrid,
             dimwann=dimC,
             dynamical=True,
@@ -247,24 +352,23 @@ def run_conductor(
     if write_lead_sgm and rank == 0:
         write_operator_xml(
             filename=f"{lead_sgm_prefix}_L_sgm.xml",
-            operator_matrix=sigma_L_arr,
-            ivr=data_dict["ivr_par3D"],
+            operator_matrix=rsgmL_out,
+            ivr=ivr_par3D,
             grid=egrid,
             dimwann=dimC,
             dynamical=True,
             analyticity="retarded",
             eunits="eV",
         )
-        if not surface:
-            write_operator_xml(
-                filename=f"{lead_sgm_prefix}_R_sgm.xml",
-                operator_matrix=sigma_R_arr,
-                ivr=data_dict["ivr_par3D"],
-                grid=egrid,
-                dimwann=dimC,
-                dynamical=True,
-                analyticity="retarded",
-                eunits="eV",
-            )
+        write_operator_xml(
+            filename=f"{lead_sgm_prefix}_R_sgm.xml",
+            operator_matrix=rsgmR_out,
+            ivr=ivr_par3D,
+            grid=egrid,
+            dimwann=dimC,
+            dynamical=True,
+            analyticity="retarded",
+            eunits="eV",
+        )
 
     return conduct, dos, conduct_k, dos_k
