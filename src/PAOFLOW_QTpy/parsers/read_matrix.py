@@ -108,7 +108,7 @@ def read_matrix(
     if nspin == 2 and ispin < 0:
         raise ValueError("Unspecified ispin for spin-polarized case")
 
-    ivr = reader.read_array("IVR", shape=(3, nrtot), dtype=int)
+    ivr = reader.read_array("IVR", shape=(nrtot, 3), dtype=int).T
 
     # Check grid dimensions
     nrtot_par = opr.H.shape[2]
@@ -119,7 +119,6 @@ def read_matrix(
         reader.find_section(f"SPIN{ispin + 1}")
 
     reader.find_section("RHAM")
-
     for ir_par in range(nrtot_par):
         ivr_aux = np.zeros(3, dtype=int)
         j = 0
