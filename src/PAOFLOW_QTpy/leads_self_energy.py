@@ -42,7 +42,7 @@ def build_self_energies_from_blocks(
     `s00L` : (nL, nL) complex ndarray
         Overlap matrix S_00 of the left lead.
     `leads_are_identical` : bool
-        If True, reuse right lead calculation for left.
+        If True, reuse transfer matrices for both leads.
     `delta` : float
         Broadening parameter.
     `niterx` : int
@@ -74,48 +74,65 @@ def build_self_energies_from_blocks(
         Σ_R = H_CR · G_surf(R) · H_CR†
         Σ_L = H_LC† · G_surf(L) · H_LC
 
+    If the leads are identical, the same transfer matrices are reused,
+    but the surface Green's function must still be computed with `igreen=-1` for Σ_L.
     """
-    gR, niter_R = compute_lead_surface_green_function(
-        blc_00R,
-        s00R,
-        blc_01R,
+    tot, tott, niter_R = compute_surface_transfer_matrices(
+        h_eff=blc_00R,
+        s_eff=s00R,
+        t_coupling=blc_01R,
         delta=delta,
-        direction="right",
         niterx=niterx,
         transfer_thr=transfer_thr,
         fail_counter=fail_counter,
         fail_limit=fail_limit,
         verbose=verbose,
     )
-    sigma_R = blc_CR @ gR @ blc_CR.conj().T
+
+    gR = compute_surface_green_function(
+        h_eff=blc_00R,
+        s_eff=s00R,
+        t_coupling=blc_01R,
+        transfer_matrix=tot,
+        transfer_matrix_conj=tott,
+        igreen=1,
+        delta=delta,
+    )
 
     if leads_are_identical:
-        gL, niter_L = compute_lead_surface_green_function(
-            blc_00R,
-            s00R,
-            blc_01R,
+        gL = compute_surface_green_function(
+            h_eff=blc_00R,
+            s_eff=s00R,
+            t_coupling=blc_01R,
+            transfer_matrix=tot,
+            transfer_matrix_conj=tott,
+            igreen=-1,
             delta=delta,
-            direction="left",
+        )
+        niter_L = niter_R
+    else:
+        totL, tottL, niter_L = compute_surface_transfer_matrices(
+            h_eff=blc_00L,
+            s_eff=s00L,
+            t_coupling=blc_01L,
+            delta=delta,
             niterx=niterx,
             transfer_thr=transfer_thr,
             fail_counter=fail_counter,
             fail_limit=fail_limit,
             verbose=verbose,
         )
-    else:
-        gL, niter_L = compute_lead_surface_green_function(
-            blc_00L,
-            s00L,
-            blc_01L,
+        gL = compute_surface_green_function(
+            h_eff=blc_00L,
+            s_eff=s00L,
+            t_coupling=blc_01L,
+            transfer_matrix=totL,
+            transfer_matrix_conj=tottL,
+            igreen=-1,
             delta=delta,
-            direction="left",
-            niterx=niterx,
-            transfer_thr=transfer_thr,
-            fail_counter=fail_counter,
-            fail_limit=fail_limit,
-            verbose=verbose,
         )
 
+    sigma_R = blc_CR @ gR @ blc_CR.conj().T
     sigma_L = blc_LC.conj().T @ gL @ blc_LC
 
     return sigma_R, sigma_L, niter_R, niter_L
@@ -124,7 +141,7 @@ def build_self_energies_from_blocks(
 def compute_lead_surface_green_function(
     h_eff: np.ndarray,
     s_eff: np.ndarray,
-    h_coupling: np.ndarray,
+    t_coupling: np.ndarray,
     delta: float = 1e-5,
     direction: str = "right",
     niterx: int = 200,
@@ -142,7 +159,7 @@ def compute_lead_surface_green_function(
         On-site effective block (E·S - H) for the lead principal layer.
     `s_eff` : np.ndarray
         Overlap matrix S_00 of the lead.
-    `h_coupling` : np.ndarray
+    `t_coupling` : np.ndarray
         Inter-cell coupling block (effective form consistent with `h_eff`).
     `delta` : float
         Imaginary broadening parameter.
@@ -178,7 +195,7 @@ def compute_lead_surface_green_function(
     tot, tott, niter = compute_surface_transfer_matrices(
         h_eff,
         s_eff,
-        h_coupling,
+        t_coupling,
         delta=delta,
         niterx=niterx,
         transfer_thr=transfer_thr,
@@ -190,7 +207,7 @@ def compute_lead_surface_green_function(
     igreen = 1 if direction == "right" else -1
 
     g_surf = compute_surface_green_function(
-        h_eff, s_eff, h_coupling, tot, tott, igreen=igreen, delta=delta
+        h_eff, s_eff, t_coupling, tot, tott, igreen=igreen, delta=delta
     )
 
     return g_surf, niter

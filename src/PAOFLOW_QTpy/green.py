@@ -9,8 +9,8 @@ def compute_surface_green_function(
     h_eff: np.ndarray,
     s_eff: np.ndarray,
     t_coupling: np.ndarray,
-    tot: np.ndarray,
-    tott: np.ndarray,
+    transfer_matrix: np.ndarray,
+    transfer_matrix_conj: np.ndarray,
     igreen: Literal[-1, 0, 1],
     delta: float = 1e-5,
 ) -> np.ndarray:
@@ -25,9 +25,9 @@ def compute_surface_green_function(
         Overlap matrix `S_00` of shape (dim, dim).
     `t_coupling` : np.ndarray
         Coupling matrix `H_01` of shape (dim, dim).
-    `tot` : np.ndarray
+    `transfer_matrix` : np.ndarray
         Right-going transfer matrix `T` of shape (dim, dim).
-    `tott` : np.ndarray
+    `transfer_matrix_conj` : np.ndarray
         Left-going transfer matrix `T†` of shape (dim, dim).
     `igreen` : {-1, 0, 1}
         Green’s function type:
@@ -57,12 +57,12 @@ def compute_surface_green_function(
     A = h_eff + z_shift
 
     if igreen == 1:
-        A -= t_coupling @ tot
+        A -= t_coupling @ transfer_matrix
     elif igreen == -1:
-        A -= t_coupling.conj().T @ tott
+        A -= t_coupling.conj().T @ transfer_matrix_conj
     elif igreen == 0:
-        A -= t_coupling @ tot
-        A -= t_coupling.conj().T @ tott
+        A -= t_coupling @ transfer_matrix
+        A -= t_coupling.conj().T @ transfer_matrix_conj
     else:
         raise ValueError(f"Invalid value for `igreen`: {igreen}. Must be -1, 0, or 1.")
 
