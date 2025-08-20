@@ -507,7 +507,7 @@ def build_hamiltonian_from_proj(
                         proj_b /= np.sqrt(weight)
 
                     Hk[isp, ik] += (eig[ib, ik, isp] - atmproj_sh) * np.outer(
-                        proj_b.conj(), proj_b
+                        proj_b, proj_b.conj()
                     )
                 Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
 
