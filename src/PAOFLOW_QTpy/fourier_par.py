@@ -36,10 +36,14 @@ def fourier_transform_real_to_kspace(
     dim1, dim2, nR = rh.shape
     _, nk = table.shape
     kh = np.zeros((dim1, dim2, nk), dtype=np.complex128)
+    rh = rh.transpose(
+        1, 0, 2
+    )  # Swap i <-> j axes # TODO Fix necessary due to column major vs row major description variation.
 
     for k in range(nk):
         for R in range(nR):
             kh[:, :, k] += wr[R] * table[R, k] * rh[:, :, R]
 
+    kh = kh.transpose(1, 0, 2)  # Swap i <-> j axes
     global_timing.stop("fourier_par")
     return kh
