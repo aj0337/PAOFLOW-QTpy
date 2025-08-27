@@ -46,7 +46,7 @@ def run_conductor(
     nprint: int = 20,
     write_gf: bool = True,  # TODO Make variable an input from yaml file
     gf_filename: str = "greenf.xml",
-    write_lead_sgm: bool = False,  # TODO Make variable an input from yaml file
+    write_lead_sgm: bool = True,  # TODO Make variable an input from yaml file
     lead_sgm_prefix: str = "lead",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
