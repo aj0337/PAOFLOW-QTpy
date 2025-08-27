@@ -212,12 +212,12 @@ def run_conductor(
             )
 
             sigma_R, sigma_L, niter_R, niter_L = build_self_energies_from_blocks(
-                blc_00R=blc_blocks["blc_00R"].aux[..., ik],
-                blc_01R=blc_blocks["blc_01R"].aux[..., ik],
-                blc_00L=blc_blocks["blc_00L"].aux[..., ik],
-                blc_01L=blc_blocks["blc_01L"].aux[..., ik],
-                blc_CR=blc_blocks["blc_CR"].aux[..., ik],
-                blc_LC=blc_blocks["blc_LC"].aux[..., ik],
+                blc_00R=blc_blocks["blc_00R"].at_k(ik),
+                blc_01R=blc_blocks["blc_01R"].at_k(ik),
+                blc_00L=blc_blocks["blc_00L"].at_k(ik),
+                blc_01L=blc_blocks["blc_01L"].at_k(ik),
+                blc_CR=blc_blocks["blc_CR"].at_k(ik),
+                blc_LC=blc_blocks["blc_LC"].at_k(ik),
                 s00R=blc_blocks["blc_00R"].S[..., ik].T,
                 s00L=blc_blocks["blc_00L"].S[..., ik].T,
                 leads_are_identical=leads_are_identical,

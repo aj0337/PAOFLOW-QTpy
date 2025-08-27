@@ -3,13 +3,16 @@ from PAOFLOW_QTpy.green import compute_surface_green_function
 from PAOFLOW_QTpy.transfer import compute_surface_transfer_matrices
 
 
+from PAOFLOW_QTpy.operator_blc import OperatorBlockView
+
+
 def build_self_energies_from_blocks(
-    blc_00R: np.ndarray,
-    blc_01R: np.ndarray,
-    blc_00L: np.ndarray,
-    blc_01L: np.ndarray,
-    blc_CR: np.ndarray,
-    blc_LC: np.ndarray,
+    blc_00R: OperatorBlockView,
+    blc_01R: OperatorBlockView,
+    blc_00L: OperatorBlockView,
+    blc_01L: OperatorBlockView,
+    blc_CR: OperatorBlockView,
+    blc_LC: OperatorBlockView,
     s00R: np.ndarray,
     s00L: np.ndarray,
     leads_are_identical: bool,
@@ -25,17 +28,17 @@ def build_self_energies_from_blocks(
 
     Parameters
     ----------
-    `blc_00R` : (nR, nR) complex ndarray
+    `blc_00R` : OperatorBlockView
         On-site Hamiltonian of the right lead.
-    `blc_01R` : (nR, nR) complex ndarray
+    `blc_01R` : OperatorBlockView
         Hopping between right lead cells.
-    `blc_00L` : (nL, nL) complex ndarray
+    `blc_00L` : OperatorBlockView
         On-site Hamiltonian of the left lead.
-    `blc_01L` : (nL, nL) complex ndarray
+    `blc_01L` : OperatorBlockView
         Hopping between left lead cells.
-    `blc_CR` : (nC, nR) complex ndarray
+    `blc_CR` : OperatorBlockView
         Coupling block between conductor and right lead.
-    `blc_LC` : (nC, nL) complex ndarray
+    `blc_LC` : OperatorBlockView
         Coupling block between conductor and left lead.
     `s00R` : (nR, nR) complex ndarray
         Overlap matrix S_00 of the right lead.
@@ -78,9 +81,9 @@ def build_self_energies_from_blocks(
     but the surface Green's function must still be computed with `igreen=-1` for Σ_L.
     """
     tot, tott, niter_R = compute_surface_transfer_matrices(
-        h_eff=blc_00R,
+        h_eff=blc_00R.aux,
         s_eff=s00R,
-        t_coupling=blc_01R,
+        t_coupling=blc_01R.aux,
         delta=delta,
         niterx=niterx,
         transfer_thr=transfer_thr,
@@ -90,9 +93,9 @@ def build_self_energies_from_blocks(
     )
 
     gR = compute_surface_green_function(
-        h_eff=blc_00R,
+        h_eff=blc_00R.aux,
         s_eff=s00R,
-        t_coupling=blc_01R,
+        t_coupling=blc_01R.aux,
         transfer_matrix=tot,
         transfer_matrix_conj=tott,
         igreen=1,
@@ -101,9 +104,9 @@ def build_self_energies_from_blocks(
 
     if leads_are_identical:
         gL = compute_surface_green_function(
-            h_eff=blc_00R,
+            h_eff=blc_00R.aux,
             s_eff=s00R,
-            t_coupling=blc_01R,
+            t_coupling=blc_01R.aux,
             transfer_matrix=tot,
             transfer_matrix_conj=tott,
             igreen=-1,
@@ -112,9 +115,9 @@ def build_self_energies_from_blocks(
         niter_L = niter_R
     else:
         totL, tottL, niter_L = compute_surface_transfer_matrices(
-            h_eff=blc_00L,
+            h_eff=blc_00L.aux,
             s_eff=s00L,
-            t_coupling=blc_01L,
+            t_coupling=blc_01L.aux,
             delta=delta,
             niterx=niterx,
             transfer_thr=transfer_thr,
@@ -123,17 +126,17 @@ def build_self_energies_from_blocks(
             verbose=verbose,
         )
         gL = compute_surface_green_function(
-            h_eff=blc_00L,
+            h_eff=blc_00L.aux,
             s_eff=s00L,
-            t_coupling=blc_01L,
+            t_coupling=blc_01L.aux,
             transfer_matrix=totL,
             transfer_matrix_conj=tottL,
             igreen=-1,
             delta=delta,
         )
 
-    sigma_R = blc_CR @ gR @ blc_CR.conj().T
-    sigma_L = blc_LC.conj().T @ gL @ blc_LC
+    sigma_R = blc_CR.aux @ gR @ blc_CR.aux.conj().T
+    sigma_L = blc_LC.aux.conj().T @ gL @ blc_LC.aux
 
     return sigma_R, sigma_L, niter_R, niter_L
 

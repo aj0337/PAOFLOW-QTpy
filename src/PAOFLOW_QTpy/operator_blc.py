@@ -7,6 +7,20 @@ import numpy as np
 from PAOFLOW_QTpy.kpoints import compute_ivr_par, kpoints_mask
 
 
+class OperatorBlockView:
+    def __init__(self, parent: OperatorBlock, ik: int):
+        self.ik = ik
+        self.parent = parent
+
+        self.H = parent.H[..., ik] if parent.H is not None else None
+        self.S = parent.S[..., ik] if parent.S is not None else None
+        self.aux = parent.aux[..., ik] if parent.aux is not None else None
+        self.sgm = parent.sgm[..., ik, :] if parent.sgm is not None else None
+        self.name = parent.name
+        self.dim1 = parent.dim1
+        self.dim2 = parent.dim2
+
+
 class OperatorBlock:
     """
     Container for block-structured matrix data used in quantum transport calculations.
@@ -148,6 +162,13 @@ class OperatorBlock:
             self.ivr_sgm = np.zeros((3, nrtot_sgm), dtype=int)
 
         self.allocated = True
+
+    def at_k(self, ik: int) -> OperatorBlockView:
+        if not self.allocated:
+            raise RuntimeError(f"Cannot slice unallocated block '{self.name}'")
+        if ik >= self.nkpts:
+            raise IndexError(f"k-point index {ik} out of range (nkpts = {self.nkpts})")
+        return OperatorBlockView(self, ik)
 
     def deallocate(self) -> None:
         """
