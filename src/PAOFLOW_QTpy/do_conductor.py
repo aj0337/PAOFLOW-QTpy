@@ -7,7 +7,11 @@ import numpy as np
 import numpy.typing as npt
 import time
 
-from PAOFLOW_QTpy.io.write_data import write_eigenchannels, write_operator_xml
+from PAOFLOW_QTpy.io.write_data import (
+    write_eigenchannels,
+    write_operator_xml,
+    write_kresolved_operator_xml,
+)
 from PAOFLOW_QTpy.green import compute_conductor_green_function
 from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
@@ -370,5 +374,11 @@ def run_conductor(
             analyticity="retarded",
             eunits="eV",
         )
-
+        outname = f"{lead_sgm_prefix}_L_k.ie{ie_g:04d}.xml"
+        write_kresolved_operator_xml(
+            filename=outname,
+            operator_k=sgmL_k,
+            dimwann=dimC,
+            vkpt=vkpt_par3D,
+        )
     return conduct, dos, conduct_k, dos_k
