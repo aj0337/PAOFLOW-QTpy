@@ -5,7 +5,6 @@ from PAOFLOW_QTpy.utils.timing import global_timing
 
 
 def compute_non_interacting_gf(
-    energy: float,
     blc_00C: OperatorBlockView,
     smearing_type: str = "lorentzian",
     delta: float = 1e-5,
@@ -52,18 +51,16 @@ def compute_non_interacting_gf(
 
     Smearing ensures convergence and causality in retarded Green's functions.
     """
-
     global_timing.start("gzero_maker")
     try:
-        A = energy * blc_00C.S - blc_00C.H
-
         if smearing_type in ("lorentzian", "none"):
             delta_eff = delta if smearing_type == "lorentzian" else delta * delta_ratio
-            omega = energy + 1j * delta_eff
-            A = omega * blc_00C.S - blc_00C.H
-            return np.linalg.inv(A) if calc == "direct" else A
+            A = blc_00C.aux + 1j * delta_eff * blc_00C.S
+            gzero = np.linalg.inv(A) if calc == "direct" else A
 
         elif smearing_type == "numerical":
+            A = blc_00C.aux
+
             if g_smear is None or xgrid is None:
                 raise ValueError("Numerical smearing requires `g_smear` and `xgrid`.")
 
@@ -93,9 +90,12 @@ def compute_non_interacting_gf(
                         f2_inv = 1.0 / f2
                         interpolated[i] = (1 - alpha) * f1_inv + alpha * f2_inv
 
-            return eigvecs @ np.diag(interpolated) @ eigvecs.conj().T
+            gzero = eigvecs @ np.diag(interpolated) @ eigvecs.conj().T
 
         else:
             raise ValueError(f"Unsupported smearing_type: {smearing_type}")
+
+        return gzero
+
     finally:
         global_timing.stop("gzero_maker")
