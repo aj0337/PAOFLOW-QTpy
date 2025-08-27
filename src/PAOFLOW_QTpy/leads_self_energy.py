@@ -13,8 +13,6 @@ def build_self_energies_from_blocks(
     blc_01L: OperatorBlockView,
     blc_CR: OperatorBlockView,
     blc_LC: OperatorBlockView,
-    s00R: np.ndarray,
-    s00L: np.ndarray,
     leads_are_identical: bool,
     delta: float = 1e-5,
     niterx: int = 200,
@@ -40,10 +38,6 @@ def build_self_energies_from_blocks(
         Coupling block between conductor and right lead.
     `blc_LC` : OperatorBlockView
         Coupling block between conductor and left lead.
-    `s00R` : (nR, nR) complex ndarray
-        Overlap matrix S_00 of the right lead.
-    `s00L` : (nL, nL) complex ndarray
-        Overlap matrix S_00 of the left lead.
     `leads_are_identical` : bool
         If True, reuse transfer matrices for both leads.
     `delta` : float
@@ -82,7 +76,7 @@ def build_self_energies_from_blocks(
     """
     tot, tott, niter_R = compute_surface_transfer_matrices(
         h_eff=blc_00R.aux,
-        s_eff=s00R,
+        s_eff=blc_00R.S,
         t_coupling=blc_01R.aux,
         delta=delta,
         niterx=niterx,
@@ -94,7 +88,7 @@ def build_self_energies_from_blocks(
 
     gR = compute_surface_green_function(
         h_eff=blc_00R.aux,
-        s_eff=s00R,
+        s_eff=blc_00R.S,
         t_coupling=blc_01R.aux,
         transfer_matrix=tot,
         transfer_matrix_conj=tott,
@@ -105,7 +99,7 @@ def build_self_energies_from_blocks(
     if leads_are_identical:
         gL = compute_surface_green_function(
             h_eff=blc_00R.aux,
-            s_eff=s00R,
+            s_eff=blc_00R.S,
             t_coupling=blc_01R.aux,
             transfer_matrix=tot,
             transfer_matrix_conj=tott,
@@ -116,7 +110,7 @@ def build_self_energies_from_blocks(
     else:
         totL, tottL, niter_L = compute_surface_transfer_matrices(
             h_eff=blc_00L.aux,
-            s_eff=s00L,
+            s_eff=blc_00L.S,
             t_coupling=blc_01L.aux,
             delta=delta,
             niterx=niterx,
@@ -127,7 +121,7 @@ def build_self_energies_from_blocks(
         )
         gL = compute_surface_green_function(
             h_eff=blc_00L.aux,
-            s_eff=s00L,
+            s_eff=blc_00L.S,
             t_coupling=blc_01L.aux,
             transfer_matrix=totL,
             transfer_matrix_conj=tottL,

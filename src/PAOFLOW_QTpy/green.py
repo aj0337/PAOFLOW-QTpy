@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 import numpy as np
 from PAOFLOW_QTpy.gzero_maker import compute_non_interacting_gf
+from PAOFLOW_QTpy.operator_blc import OperatorBlockView
 from PAOFLOW_QTpy.utils.timing import global_timing
 
 
@@ -79,8 +80,7 @@ def compute_surface_green_function(
 
 def compute_conductor_green_function(
     energy: float,
-    h_c: np.ndarray,
-    s_c: np.ndarray,
+    blc_00C: OperatorBlockView,
     sigma_l: np.ndarray,
     sigma_r: Optional[np.ndarray] = None,
     smearing_type: str = "lorentzian",
@@ -98,10 +98,6 @@ def compute_conductor_green_function(
     ----------
     `energy` : float
         Real energy value to evaluate the Green's function.
-    `h_c` : np.ndarray
-        Hamiltonian of the conductor region.
-    `s_c` : np.ndarray
-        Overlap matrix of the conductor region.
     `sigma_l` : np.ndarray
         Self-energy from the left lead.
     `sigma_r` : np.ndarray, optional
@@ -139,8 +135,7 @@ def compute_conductor_green_function(
 
     g0inv = compute_non_interacting_gf(
         energy,
-        h=h_c,
-        s=s_c,
+        blc_00C=blc_00C,
         smearing_type=smearing_type,
         delta=delta,
         delta_ratio=delta_ratio,

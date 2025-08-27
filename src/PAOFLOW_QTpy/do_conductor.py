@@ -218,8 +218,6 @@ def run_conductor(
                 blc_01L=blc_blocks["blc_01L"].at_k(ik),
                 blc_CR=blc_blocks["blc_CR"].at_k(ik),
                 blc_LC=blc_blocks["blc_LC"].at_k(ik),
-                s00R=blc_blocks["blc_00R"].S[..., ik].T,
-                s00L=blc_blocks["blc_00L"].S[..., ik].T,
                 leads_are_identical=leads_are_identical,
                 delta=delta,
                 niterx=niterx,
@@ -233,8 +231,7 @@ def run_conductor(
 
             gC = compute_conductor_green_function(
                 energy=egrid[ie_g],
-                h_c=blc_blocks["blc_00C"].H[..., ik],
-                s_c=blc_blocks["blc_00C"].S[..., ik],
+                blc_00C=blc_blocks["blc_00C"].at_k(ik),
                 sigma_l=sigma_L,
                 sigma_r=sigma_R if not surface else None,
                 delta=delta,

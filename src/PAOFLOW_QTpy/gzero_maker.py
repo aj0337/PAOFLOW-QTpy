@@ -1,12 +1,12 @@
 import numpy as np
 from typing import Optional, Literal
+from PAOFLOW_QTpy.operator_blc import OperatorBlockView
 from PAOFLOW_QTpy.utils.timing import global_timing
 
 
 def compute_non_interacting_gf(
     energy: float,
-    h: np.ndarray,
-    s: np.ndarray,
+    blc_00C: OperatorBlockView,
     smearing_type: str = "lorentzian",
     delta: float = 1e-5,
     delta_ratio: float = 5e-3,
@@ -21,10 +21,6 @@ def compute_non_interacting_gf(
     ----------
     `energy` : float
         Real energy value at which to evaluate the Green's function.
-    `h` : np.ndarray
-        Hamiltonian matrix (dim x dim).
-    `s` : np.ndarray
-        Overlap matrix (dim x dim).
     `smearing_type` : str
         Smearing method: 'lorentzian', 'none', or 'numerical'.
     `delta` : float
@@ -59,12 +55,12 @@ def compute_non_interacting_gf(
 
     global_timing.start("gzero_maker")
     try:
-        A = energy * s - h
+        A = energy * blc_00C.S - blc_00C.H
 
         if smearing_type in ("lorentzian", "none"):
             delta_eff = delta if smearing_type == "lorentzian" else delta * delta_ratio
             omega = energy + 1j * delta_eff
-            A = omega * s - h
+            A = omega * blc_00C.S - blc_00C.H
             return np.linalg.inv(A) if calc == "direct" else A
 
         elif smearing_type == "numerical":
