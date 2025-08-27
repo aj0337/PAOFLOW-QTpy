@@ -9,6 +9,8 @@ from PAOFLOW_QTpy.parsers.parser_base import parse_index_array
 from PAOFLOW_QTpy.fourier_par import fourier_transform_real_to_kspace
 from PAOFLOW_QTpy.utils.timing import global_timing
 
+# TODO check if fortran is also meant to skip block VR.1 and only read blocks  VR.2, VR.3 ... Initial tests seem to suggest that this is happening in the fortran version and hence implemented ths same way in python
+
 
 def read_matrix(
     filename: str,
