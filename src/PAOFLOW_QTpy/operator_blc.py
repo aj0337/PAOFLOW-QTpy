@@ -128,7 +128,7 @@ class OperatorBlock:
         self.irows_sgm = np.zeros(dim1, dtype=int)
 
         if lhave_aux:
-            self.aux = np.zeros((dim1, dim2), dtype=np.complex128)
+            self.aux = np.zeros((dim1, dim2, nkpts), dtype=np.complex128)
             self.lhave_aux = True
         if lhave_sgm_aux:
             self.sgm_aux = np.zeros((dim1, dim2), dtype=np.complex128)
