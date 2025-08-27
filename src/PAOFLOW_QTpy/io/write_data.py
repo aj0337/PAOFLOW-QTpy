@@ -246,7 +246,6 @@ def write_internal_format_files(
     kpts = proj_data["kpts"]
     vkpts_crystal = proj_data["vkpts_crystal"]
     vkpts_cartesian = proj_data["vkpts_cartesian"]
-
     wk = proj_data["wk"]
     spin_component = "all"
     shift = np.zeros(3, dtype=float)  # No shift in k-point grid for crystal coordinates
@@ -541,3 +540,60 @@ def complex_matrix_to_text(matrix: np.ndarray) -> str:
         lines.append("      " + " ".join(row_parts))
 
     return "\n" + "\n".join(lines) + "\n    "
+
+
+def write_kresolved_operator_xml(
+    filename: str,
+    operator_k: np.ndarray,
+    *,
+    dimwann: int,
+    vkpt: Optional[np.ndarray] = None,
+) -> None:
+    """
+    Write a k-resolved operator snapshot to XML using the existing iotk-like format.
+
+    Parameters
+    ----------
+    `filename` : str
+        Output path.
+    `operator_k` : ndarray
+        Array of shape ``(nkpts, dim, dim)`` with the operator at a fixed energy for all k-points.
+    `dimwann` : int
+        Operator dimension.
+    `vkpt` : ndarray, optional
+        K-points of shape ``(3, nkpts)`` or ``(nkpts, 3)``. Stored only as metadata proxy
+        by populating the ``<IVR>`` block with integer indices. Actual k-vectors are not
+        written because the base writer does not yet support a dedicated ``<VKPT>`` tag.
+
+    Notes
+    -----
+    The data are written with ``nomega = 1`` and ``nrtot = nkpts``. To reuse the existing
+    writer unmodified, k-points are enumerated into a 3-column integer array stored under
+    ``<IVR>``. The matrix values are exact; only the tag semantics differ from a true
+    ``<VKPT>`` representation.
+    """
+    from PAOFLOW_QTpy.io.write_data import (
+        write_operator_xml,
+    )
+
+    nk, dim1, dim2 = operator_k.shape
+    if dim1 != dimwann or dim2 != dimwann:
+        raise ValueError("operator_k shape mismatch with `dimwann`")
+
+    ivr_k = np.column_stack(
+        [
+            np.arange(nk, dtype=int),
+            np.zeros(nk, dtype=int),
+            np.zeros(nk, dtype=int),
+        ]
+    )
+
+    write_operator_xml(
+        filename=filename,
+        operator_matrix=operator_k[np.newaxis, ...],
+        ivr=ivr_k,
+        dimwann=dimwann,
+        dynamical=False,
+        nomega=1,
+        nrtot=nk,
+    )
