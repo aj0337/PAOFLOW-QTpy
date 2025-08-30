@@ -50,6 +50,40 @@ def compute_surface_transfer_matrices(
         Conjugate transfer matrix T† (ndim x ndim).
     `niter` : int
         Number of iterations used.
+
+    Notes
+    -----
+    This function implements the iterative Sancho-Rubio scheme for computing
+    the surface Green’s function via continued fraction expansion of the
+    transfer matrix.
+
+    The method solves for the surface self-energy Σ by iteratively building
+    the transfer matrix using the recurrence relations:
+
+        T₀ = (E S₀₀ - H₀₀)⁻¹ H₀₁†
+        T₀† = (E S₀₀ - H₀₀)⁻¹ H₀₁
+
+    For iteration m ≥ 1:
+
+        M₁ = Tₘ Tₘ†
+        M₂ = Tₘ† Tₘ
+        S₁ = I - (M₁ + M₂)
+        S₂ = S₁⁻¹
+
+        Tₘ₊₁ = S₂ @ (Tₘ @ Tₘ)
+        Tₘ₊₁† = S₂ @ (Tₘ† @ Tₘ†)
+
+    The cumulative transfer matrix is:
+
+        T_total += T_prev† @ Tₘ₊₁
+        T_total† += T_prev @ Tₘ₊₁†
+
+    where T_prev and T_prev† are recursively updated as:
+
+        T_prev = T_prev @ Tₘ†
+        T_prev† = T_prev† @ Tₘ
+
+    Convergence is checked using the Frobenius norms of Tₘ₊₁ and Tₘ₊₁†.
     """
     global_timing.start("transfer")
     try:
