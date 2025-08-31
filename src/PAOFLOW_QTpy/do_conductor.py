@@ -227,7 +227,7 @@ def run_conductor(
                 verbose=verbose,
             )
 
-            avg_iter += niter_R + (niter_R if leads_are_identical else niter_L)
+            avg_iter += niter_R + (niter_L if not leads_are_identical else 0)
 
             gC = compute_conductor_green_function(
                 blc_00C=blc_blocks["blc_00C"].at_k(ik),
