@@ -230,7 +230,6 @@ def run_conductor(
             avg_iter += niter_R + (niter_R if leads_are_identical else niter_L)
 
             gC = compute_conductor_green_function(
-                energy=egrid[ie_g],
                 blc_00C=blc_blocks["blc_00C"].at_k(ik),
                 sigma_l=sigma_L,
                 sigma_r=sigma_R if not surface else None,

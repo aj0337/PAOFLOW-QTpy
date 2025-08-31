@@ -79,7 +79,6 @@ def compute_surface_green_function(
 
 
 def compute_conductor_green_function(
-    energy: float,
     blc_00C: OperatorBlockView,
     sigma_l: np.ndarray,
     sigma_r: Optional[np.ndarray] = None,
@@ -96,8 +95,6 @@ def compute_conductor_green_function(
 
     Parameters
     ----------
-    `energy` : float
-        Real energy value to evaluate the Green's function.
     `sigma_l` : np.ndarray
         Self-energy from the left lead.
     `sigma_r` : np.ndarray, optional
