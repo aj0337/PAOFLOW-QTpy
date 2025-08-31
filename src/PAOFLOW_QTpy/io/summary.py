@@ -19,7 +19,7 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
         'datafile_R', 'datafile_L_sgm', 'datafile_C_sgm', 'datafile_R_sgm',
         'leads_are_identical', 'do_orthoovp', 'ne', 'ne_buffer', 'emin', 'emax', 'energy_step',
         'delta', 'smearing_type', 'nx_smear', 'xmax', 'shift_L', 'shift_C', 'shift_R',
-        'shift_corr', 'nkpts_par', 'nrtot_par', 'use_symm', 'nk_par', 's_par',
+        'shift_corr', 'nkpts_par', 'nrtot_par', 'use_sym', 'nk_par', 's_par',
         'vkpt_par3D', 'wk_par', 'ivr_par3D', 'wr_par', 'nproc'
     """
 
@@ -107,7 +107,7 @@ def print_summary(summary_data: Dict[str, Any]) -> None:
     log_rank0("  <K-POINTS>")
     log_rank0(f"       nkpts_par = {summary_data['nkpts_par']:>4}")
     log_rank0(f"       nrtot_par = {summary_data['nrtot_par']:>4}")
-    log_rank0(f"        use_symm = {summary_data['use_symm']}")
+    log_rank0(f"        use_sym = {summary_data['use_sym']}")
 
     nk_par3d = summary_data["nk_par3d"]
     s_par3d = summary_data["s_par3d"]

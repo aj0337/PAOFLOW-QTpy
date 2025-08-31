@@ -81,7 +81,7 @@ def main():
         data_dict["nk_par"],
         s_par=s_par,
         transport_dir=data_dict["transport_dir"],
-        use_symm=data_dict["use_symm"],
+        use_sym=data_dict["use_sym"],
     )
     ivr_par3D, wr_par = initialize_r_vectors(
         data_dict["nr_par"], data_dict["transport_dir"]
@@ -221,6 +221,8 @@ def main():
         niterx=data_dict.get("niterx", 200),
         transfer_thr=data_dict.get("transfer_thr", 1e-12),
         nprint=data_dict.get("nprint", 20),
+        write_gf=data_dict.get("write_gf", False),
+        write_lead_sgm=data_dict.get("write_lead_sgm", False),
     )
     global_timing.stop("do_conductor")
 

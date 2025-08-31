@@ -128,7 +128,6 @@ class ConductorData(PydanticBaseModel):
     nx_smear: NonNegativeInt = 20000
     nkpts_par: NonNegativeInt = 1
     nrtot_par: NonNegativeInt = 1
-    use_symm: bool = True
 
     # Should probably be split into classes separate for conductor and
     # Hamiltonian. Keeping them combined for now.
@@ -208,8 +207,11 @@ class ConductorData(PydanticBaseModel):
         if self.do_eigplot and not self.do_eigenchannels:
             raise ValueError("do_eigplot needs do_eigenchannels")
 
-        if self.write_lead_sgm or self.write_gf and self.use_sym:
-            raise ValueError("use_symm and write_sgm or write_gf not implemented")
+        if self.write_lead_sgm and self.use_sym:
+            raise ValueError("use_sym and write_lead_sgm not implemented")
+
+        if self.write_gf and self.use_sym:
+            raise ValueError("use_sym and write_gf not implemented")
 
         if self.carriers == "phonons":
             self.emin = self.emin**2 / (rydcm1 / np.sqrt(amconv)) ** 2

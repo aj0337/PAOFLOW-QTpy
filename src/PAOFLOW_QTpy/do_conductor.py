@@ -48,9 +48,9 @@ def run_conductor(
     fail_limit: int = 10,
     verbose: bool = False,
     nprint: int = 20,
-    write_gf: bool = True,  # TODO Make variable an input from yaml file
+    write_gf: bool = True,
     gf_filename: str = "greenf.xml",
-    write_lead_sgm: bool = True,  # TODO Make variable an input from yaml file
+    write_lead_sgm: bool = True,
     lead_sgm_prefix: str = "lead",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """

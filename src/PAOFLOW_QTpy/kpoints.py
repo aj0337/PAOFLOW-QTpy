@@ -169,7 +169,7 @@ def initialize_kpoints(
     nk_par: np.ndarray,
     s_par: np.ndarray,
     transport_dir: int,
-    use_symm: bool = True,
+    use_sym: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate 3D k-points and weights on a uniform 2D mesh orthogonal to the transport direction.
@@ -182,7 +182,7 @@ def initialize_kpoints(
         Shifts (in fractional units) for the mesh in the two non-transport directions.
     `transport_dir` : int
         Transport direction (1 = x, 2 = y, 3 = z).
-    `use_symm` : bool
+    `use_sym` : bool
         Whether to symmetrize the mesh under time-reversal (k ≡ -k).
 
     Returns
@@ -221,7 +221,7 @@ def initialize_kpoints(
             kx = (i - mesh_x // 2) / mesh_x + shift_x / (2 * mesh_x)
             ky = (j - mesh_y // 2) / mesh_y + shift_y / (2 * mesh_y)
             kpt = np.array([kx, ky])
-            if use_symm:
+            if use_sym:
                 for existing in vkpts_2d:
                     if kpoints_equivalent(existing, kpt):
                         break
