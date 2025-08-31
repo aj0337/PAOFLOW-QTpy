@@ -118,9 +118,9 @@ def compute_surface_transfer_matrices(
         tsumt = tau.copy()
 
         for m in range(1, niterx + 1):
-            t11_new = tau @ taut
-            t12_new = taut @ tau
-            s1 = -(t11_new + t12_new)
+            t11 = tau @ taut
+            t12 = taut @ tau
+            s1 = -(t11 + t12)
             np.fill_diagonal(s1, 1.0 + np.diag(s1))
 
             try:
