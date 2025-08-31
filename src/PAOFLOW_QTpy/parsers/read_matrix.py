@@ -179,12 +179,15 @@ def read_matrix(
             } and np.all(ivr_aux == 0):
                 S_loc[:] = np.eye(ldimwann)
 
+        A_loc_T = A_loc.T
+        S_loc_T = S_loc.T
+
         for j in range(dim2):
             for i in range(dim1):
                 if icols[j] < 0 or irows[i] < 0:
                     continue
-                A[i, j, ir_par] = A_loc[irows[i], icols[j]]
-                S[i, j, ir_par] = S_loc[irows[i], icols[j]]
+                A[i, j, ir_par] = A_loc_T[irows[i], icols[j]]
+                S[i, j, ir_par] = S_loc_T[irows[i], icols[j]]
 
     opr.H = fourier_transform_real_to_kspace(A, opr.wr_par, opr.table_par)
     opr.S = fourier_transform_real_to_kspace(S, opr.wr_par, opr.table_par)

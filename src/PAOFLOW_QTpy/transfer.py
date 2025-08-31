@@ -89,7 +89,6 @@ def compute_surface_transfer_matrices(
     try:
         ndim = h_eff.shape[0]
         A = h_eff + 1j * delta * s_eff
-
         try:
             t11 = np.linalg.solve(A, np.eye(ndim))
             t11 = t11.T
@@ -109,7 +108,7 @@ def compute_surface_transfer_matrices(
                 0,
             )
 
-        tau = t11 @ t_coupling.conj()
+        tau = t11 @ t_coupling.T.conj()
         taut = t11 @ t_coupling
 
         tot = tau.copy()
