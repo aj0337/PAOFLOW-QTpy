@@ -5,7 +5,6 @@ from typing import Literal
 from mpi4py import MPI
 import numpy as np
 import numpy.typing as npt
-import time
 
 from PAOFLOW_QTpy.io.write_data import (
     write_eigenchannels,
@@ -17,6 +16,7 @@ from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
 from PAOFLOW_QTpy.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
+from PAOFLOW_QTpy.utils.timing import global_timing
 from PAOFLOW_QTpy.compute_rham import compute_rham
 
 
@@ -144,6 +144,7 @@ def run_conductor(
     ``w_k`` are the integration weights, and ``R`` are the real-space lattice vectors
     matching ``ivr_par3D``/``vr_par3D``.
     """
+
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -298,9 +299,10 @@ def run_conductor(
         avg_iter /= 2 * nkpts_par
 
         if (ie_g % nprint == 0 or ie_g == ie_start or ie_g == ie_end) and rank == 0:
-            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}")
-            elapsed = time.perf_counter() - data_dict["_freqloop_start_time"]
-            print(f"\n{'Total time spent up to now :':>40} {elapsed:10.2f} secs\n")
+            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
+            global_timing.timing_upto_now(
+                "do_conductor", label="Total time spent up to now"
+            )
 
         if write_gf:
             for ir in range(nrtot_par):
@@ -377,4 +379,5 @@ def run_conductor(
             dimwann=dimC,
             vkpt=vkpt_par3D,
         )
+
     return conduct, dos, conduct_k, dos_k
