@@ -91,7 +91,9 @@ def compute_surface_transfer_matrices(
         A = h_eff + 1j * delta * s_eff
 
         try:
-            t11 = np.linalg.inv(A)
+            t11 = np.linalg.solve(A, np.eye(ndim))
+            t11 = t11.T
+
         except np.linalg.LinAlgError:
             if verbose:
                 logger.warning("Initial inversion failed: singular matrix.")
@@ -122,7 +124,7 @@ def compute_surface_transfer_matrices(
             np.fill_diagonal(s1, 1.0 + np.diag(s1))
 
             try:
-                s2 = np.linalg.inv(s1)
+                s2 = np.linalg.solve(s1, np.eye(ndim))
             except np.linalg.LinAlgError:
                 if verbose:
                     logger.warning(
