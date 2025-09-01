@@ -107,7 +107,7 @@ def evaluate_transmittance(
             if S_overlap is not None:
                 evals, _ = eigh(Tmat @ lambda_mat, S_overlap)
             else:
-                evals = eigh(Tmat @ lambda_mat, eigvals_only=True)
+                evals, _ = eigh(Tmat @ lambda_mat)
             conduct = np.real(np.sort(evals))
             return conduct, None
 
