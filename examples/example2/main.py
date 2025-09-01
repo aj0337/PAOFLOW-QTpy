@@ -36,7 +36,7 @@ comm = MPI.COMM_WORLD
 def main():
     global_timing.start("conductor")
 
-    yaml_file = "./conductor.yaml"
+    yaml_file = "./conductor_bulk.yaml"
     data_dict = load_summary_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
     datafile_L = data_dict.get("datafile_L", "")
@@ -45,7 +45,7 @@ def main():
     datafile_R_sgm = data_dict.get("datafile_R_sgm", "")
 
     prefix = os.path.basename(datafile_C)
-    work_dir = "./al5.save"
+    work_dir = "./alh.save"
     atmproj_sh = data_dict["atmproj_sh"]
     atmproj_thr = data_dict["atmproj_thr"]
     do_orthoovp = data_dict["do_orthoovp"]
@@ -127,6 +127,7 @@ def main():
     )
 
     dimL = data_dict["dimL"]
+    print("dimL:", dimL)
     dimC = data_dict["dimC"]
     dimR = data_dict["dimR"]
     nkpts_par = data_dict["nkpts_par"]
@@ -233,9 +234,19 @@ def main():
         egrid = np.linspace(data_dict["emin"], data_dict["emax"], data_dict["ne"])
 
         write_data(
-            egrid, conduct, "conductance", output_dir, postfix=data_dict["postfix"]
+            egrid,
+            conduct,
+            "conductance",
+            output_dir,
+            postfix=data_dict["postfix"],
         )
-        write_data(egrid, dos, "doscond", output_dir, postfix=data_dict["postfix"])
+        write_data(
+            egrid,
+            dos,
+            "doscond",
+            output_dir,
+            postfix=data_dict["postfix"],
+        )
 
         if data_dict.get("write_kdata", False):
             for ik in range(nkpts_par):
