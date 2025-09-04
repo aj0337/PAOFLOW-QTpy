@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 import numpy as np
 from mpi4py import MPI
@@ -36,7 +37,12 @@ comm = MPI.COMM_WORLD
 def main():
     global_timing.start("conductor")
 
-    yaml_file = "./conductor_lcr.yaml"
+    if len(sys.argv) != 2:
+        if comm.rank == 0:
+            print("Usage: python main.py <yaml_file>")
+        sys.exit(1)
+
+    yaml_file = sys.argv[1]
     data_dict = load_summary_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
     datafile_L = data_dict.get("datafile_L", "")
