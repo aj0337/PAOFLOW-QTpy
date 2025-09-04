@@ -1,18 +1,23 @@
 input_conductor:
   postfix: "_bulk"
-  dimC: 20
+  dimC: 41
   calculation_type: "bulk"
   ne: 9001
   emin: -7.0
   # ne: 2
   # emin: 1.9
   emax: 2.0
-  datafile_C: "./al5.save/atomic_proj.xml"
+  datafile_C: "./alh.save/atomic_proj.xml"
   transport_dir: 3
   delta: 0.0005
   do_orthoovp: true
   atmproj_sh: 3.5
   atmproj_thr: 0.9
+  do_eigenchannels: true
+  neigchx: 4
+  do_eigplot: true
+  ie_eigplot: 7001
+  ik_eigplot: 1
   write_gf: false
   write_lead_sgm: false
   use_sym: false

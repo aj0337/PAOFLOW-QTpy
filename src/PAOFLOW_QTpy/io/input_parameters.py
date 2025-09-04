@@ -67,6 +67,7 @@ FileFormat = Literal[
 ]
 
 
+# TODO make input from YAML case insensitive
 class ConductorData(PydanticBaseModel):
     dimL: NonNegativeInt = 0
     dimR: NonNegativeInt = 0
