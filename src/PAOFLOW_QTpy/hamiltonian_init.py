@@ -18,6 +18,7 @@ def initialize_hamiltonian_blocks(
     calculation_type: Literal["conductor", "bulk"],
     datafile_L: str = "",
     datafile_R: str = "",
+    hamiltonian_data: dict[str, dict[str, str]] = {},
 ) -> None:
     """
     Initialize all Hamiltonian and overlap matrix blocks for the transport system.
@@ -64,6 +65,16 @@ def initialize_hamiltonian_blocks(
 
     # Allocate operator blocks
     ham_system.allocate(ivr_par3D)
+
+    ham_system.blc_00C.tag = hamiltonian_data.get("H00_C", {})
+    ham_system.blc_CR.tag = hamiltonian_data.get("H_CR", {})
+
+    if calculation_type == "conductor":
+        ham_system.blc_LC.tag = hamiltonian_data.get("H_LC", {})
+        ham_system.blc_00L.tag = hamiltonian_data.get("H00_L", {})
+        ham_system.blc_01L.tag = hamiltonian_data.get("H01_L", {})
+        ham_system.blc_00R.tag = hamiltonian_data.get("H00_R", {})
+        ham_system.blc_01R.tag = hamiltonian_data.get("H01_R", {})
 
     # Assign 2D ivr_par to all blocks for use in read_matrix
     ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_dir)

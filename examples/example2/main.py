@@ -36,14 +36,13 @@ comm = MPI.COMM_WORLD
 def main():
     global_timing.start("conductor")
 
-    yaml_file = "./conductor_bulk.yaml"
+    yaml_file = "./conductor_lcr.yaml"
     data_dict = load_summary_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
     datafile_L = data_dict.get("datafile_L", "")
     datafile_R = data_dict.get("datafile_R", "")
     datafile_L_sgm = data_dict.get("datafile_L_sgm", "")
     datafile_R_sgm = data_dict.get("datafile_R_sgm", "")
-
     prefix = os.path.basename(datafile_C)
     work_dir = "./alh.save"
     atmproj_sh = data_dict["atmproj_sh"]
@@ -127,7 +126,6 @@ def main():
     )
 
     dimL = data_dict["dimL"]
-    print("dimL:", dimL)
     dimC = data_dict["dimC"]
     dimR = data_dict["dimR"]
     nkpts_par = data_dict["nkpts_par"]
@@ -160,6 +158,7 @@ def main():
         ispin=data_dict["ispin"],
         transport_dir=data_dict["transport_dir"],
         calculation_type=calculation_type,
+        hamiltonian_data=data_dict["hamiltonian_data"],
     )
 
     global_timing.stop("hamiltonian_init")
