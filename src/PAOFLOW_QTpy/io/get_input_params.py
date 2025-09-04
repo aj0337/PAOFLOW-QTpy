@@ -9,7 +9,11 @@ def get_input_from_yaml(yaml_file: str) -> dict:
 
 
 def load_summary_data_from_yaml(yaml_path: str, comm=None) -> dict:
-    user_input = get_input_from_yaml(yaml_path)
-    input_conductor = user_input.get("input_conductor", {})
+    full_yaml = get_input_from_yaml(yaml_path)
+    input_conductor = full_yaml.get("input_conductor", {})
+    hamiltonian_data = full_yaml.get("hamiltonian_data", {})
     validated = ConductorData(filename=yaml_path, validate=True, **input_conductor)
-    return validated.model_dump()
+    result = validated.model_dump()
+    result["hamiltonian_data"] = hamiltonian_data
+
+    return result
