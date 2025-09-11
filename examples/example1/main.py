@@ -15,7 +15,7 @@ from PAOFLOW_QTpy.io.write_data import write_data
 from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
-from PAOFLOW_QTpy.io.get_input_params import load_summary_data_from_yaml
+from PAOFLOW_QTpy.io.get_input_params import load_conductor_data_from_yaml
 from PAOFLOW_QTpy.kpoints import (
     compute_fourier_phase_table,
     initialize_meshsize,
@@ -42,7 +42,7 @@ def main():
             print("Usage: python main.py <yaml_file>")
         sys.exit(1)
     yaml_file = sys.argv[1]
-    data_dict = load_summary_data_from_yaml(yaml_file)
+    data_dict = load_conductor_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
     datafile_L = data_dict.get("datafile_L", "")
     datafile_R = data_dict.get("datafile_R", "")

@@ -331,3 +331,37 @@ class ConductorData(PydanticBaseModel):
         if value < 0.0:
             raise ValueError("invalid atmproj_nbnd")
         return value
+
+
+class CurrentData(PydanticBaseModel):
+    filein: str
+    fileout: str
+    Vmin: float
+    Vmax: float
+    nV: PositiveInt
+    sigma: NonNegativeFloat
+    mu_L: float
+    mu_R: float
+
+    def __init__(self, filename: str, *, validate: bool = True, **data: Any) -> None:
+        input_dict = self.read(filename)
+        data.update(input_dict.get("input", {}))
+        super().__init__(**data)
+        if validate:
+            self.validate_input()
+
+    def read(self, filename: str) -> Dict[str, Any]:
+        with open(Path(filename).absolute()) as f:
+            return load(f, SafeLoader)
+
+    def validate_input(self) -> None:
+        if self.Vmax <= self.Vmin:
+            raise ValueError("Vmax must be greater than Vmin")
+        if self.sigma < 0:
+            raise ValueError("sigma must be non-negative")
+
+    @validator("nV")
+    def check_nV(cls, value) -> None:
+        if value <= 0:
+            raise ValueError("nV must be positive")
+        return value
