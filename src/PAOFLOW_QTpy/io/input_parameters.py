@@ -123,6 +123,7 @@ class ConductorData(PydanticBaseModel):
     surface: bool = False
     efermi_bulk: NonNegativeFloat = 0.0
     lhave_corr: bool = False
+    ldynam_corr: bool = False
     leads_are_identical: bool = True
     energy_step: NonNegativeFloat = 0.001
     delta: NonNegativeFloat = 0.0005

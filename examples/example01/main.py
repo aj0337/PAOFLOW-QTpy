@@ -34,20 +34,28 @@ from PAOFLOW_QTpy.utils.timing import global_timing
 comm = MPI.COMM_WORLD
 
 
-def main():
-    global_timing.start("conductor")
-
+def parse_args():
+    """
+    Parse command-line arguments for the driver script.
+    Returns the YAML file path as a string.
+    """
     if len(sys.argv) != 2:
         if comm.rank == 0:
             print("Usage: python main.py <yaml_file>")
         sys.exit(1)
-    yaml_file = sys.argv[1]
+    return sys.argv[1]
+
+
+def main():
+    global_timing.start("conductor")
+
+    yaml_file = parse_args()
     data_dict = load_conductor_data_from_yaml(yaml_file)
     datafile_C = data_dict["datafile_C"]
-    datafile_L = data_dict.get("datafile_L", "")
-    datafile_R = data_dict.get("datafile_R", "")
-    datafile_L_sgm = data_dict.get("datafile_L_sgm", "")
-    datafile_R_sgm = data_dict.get("datafile_R_sgm", "")
+    datafile_L = data_dict["datafile_L"]
+    datafile_R = data_dict["datafile_R"]
+    datafile_L_sgm = data_dict["datafile_L_sgm"]
+    datafile_R_sgm = data_dict["datafile_R_sgm"]
 
     prefix = os.path.basename(datafile_C)
     work_dir = "./al5.save"
@@ -113,9 +121,7 @@ def main():
     smearing_data = SmearingData(smearing_func=smearing_func)
 
     global_timing.start("smearing_init")
-    smearing_data.initialize(
-        smearing_type="lorentzian", delta=1e-5, delta_ratio=5e-3, xmax=25.0
-    )
+    smearing_data.initialize()
     global_timing.stop("smearing_init")
 
     memory_tracker.register_section(
@@ -184,8 +190,8 @@ def main():
         dimx_lead=max(dimL, dimR),
         nkpts_par=nkpts_par,
         nrtot_par=data_dict["nrtot_par"],
-        write_lead_sgm=data_dict.get("write_lead_sgm", False),
-        write_gf=data_dict.get("write_gf", False),
+        write_lead_sgm=data_dict["write_lead_sgm"],
+        write_gf=data_dict["write_gf"],
     )
     memory_tracker.register_section(
         "workspace", workspace.memusage, is_allocated=workspace.allocated
@@ -213,21 +219,21 @@ def main():
         vkpt_par3D=vkpt_par3D,
         transport_dir=data_dict["transport_dir"],
         conduct_formula=data_dict["conduct_formula"],
-        do_eigenchannels=data_dict.get("do_eigenchannels", False),
-        neigchnx=data_dict.get("neigchnx", 0),
-        do_eigplot=data_dict.get("do_eigplot", False),
-        ie_eigplot=data_dict.get("ie_eigplot", None),
-        ik_eigplot=data_dict.get("ik_eigplot", None),
+        do_eigenchannels=data_dict["do_eigenchannels"],
+        neigchnx=data_dict["neigchnx"],
+        do_eigplot=data_dict["do_eigplot"],
+        ie_eigplot=data_dict["ie_eigplot"],
+        ik_eigplot=data_dict["ik_eigplot"],
         leads_are_identical=data_dict["leads_are_identical"],
-        surface=data_dict.get("surface", False),
-        lhave_corr=data_dict.get("lhave_corr", False),
-        ldynam_corr=data_dict.get("ldynam_corr", False),
+        surface=data_dict["surface"],
+        lhave_corr=data_dict["lhave_corr"],
+        ldynam_corr=data_dict["ldynam_corr"],
         delta=data_dict["delta"],
-        niterx=data_dict.get("niterx", 200),
-        transfer_thr=data_dict.get("transfer_thr", 1e-12),
-        nprint=data_dict.get("nprint", 20),
-        write_gf=data_dict.get("write_gf", False),
-        write_lead_sgm=data_dict.get("write_lead_sgm", False),
+        niterx=data_dict["niterx"],
+        transfer_thr=data_dict["transfer_thr"],
+        nprint=data_dict["nprint"],
+        write_gf=data_dict["write_gf"],
+        write_lead_sgm=data_dict["write_lead_sgm"],
     )
     global_timing.stop("do_conductor")
 
@@ -242,7 +248,7 @@ def main():
         )
         write_data(egrid, dos, "doscond", output_dir, postfix=data_dict["postfix"])
 
-        if data_dict.get("write_kdata", False):
+        if data_dict["write_kdata"]:
             for ik in range(nkpts_par):
                 ik_str = f"{ik + 1:04d}"
                 filename_cond = f"{prefix}_cond-{ik_str}.dat"
