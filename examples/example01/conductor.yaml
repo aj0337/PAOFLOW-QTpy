@@ -2,11 +2,9 @@ input_conductor:
   postfix: "_bulk"
   dimC: 20
   calculation_type: "bulk"
-  ne: 9001
   emin: -7.0
-  # ne: 2
-  # emin: 1.9
   emax: 2.0
+  ne: 9001
   datafile_C: "./al5.save/atomic_proj.xml"
   transport_dir: 3
   delta: 0.0005
