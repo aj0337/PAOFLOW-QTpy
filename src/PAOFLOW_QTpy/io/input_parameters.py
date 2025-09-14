@@ -16,6 +16,7 @@ from typing import (
     Any,
     List,
     Dict,
+    Optional,
     Literal,
 )
 
@@ -68,38 +69,7 @@ FileFormat = Literal[
 
 
 # TODO make input from YAML case insensitive
-class ConductorData(PydanticBaseModel):
-    dimL: NonNegativeInt = 0
-    dimR: NonNegativeInt = 0
-    dimC: NonNegativeInt = 0
-    transport_dir: Annotated[int, conint(ge=1, le=3)] = 0
-    calculation_type: CalculationType = "conductor"
-    conduct_formula: ConductFormula = "landauer"
-    carriers: Carriers = "electrons"
-    ne: Annotated[PositiveInt, conint(gt=1)] = 1000
-    ne_buffer: PositiveInt = 1
-    emin: float = -10.0
-    emax: float = 10.0
-    delta: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.3)] = 1e-5
-    smearing_type: SmearingType = "lorentzian"
-    delta_ratio: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.1)] = 5.0e-3
-    xmax: Annotated[NonNegativeFloat, confloat(ge=10)] = 25.0
-    bias: NonNegativeFloat = 0.0
-    nk: List[NonNegativeInt] = [0, 0]
-    s: List[NonNegativeInt] = [0, 0]
-    use_sym: bool = True
-    nprint: PositiveInt = 20
-    niterx: PositiveInt = 200
-    nfailx: PositiveInt = 5
-    transfer_thr: NonNegativeFloat = 1e-7
-    write_kdata: bool = False
-    write_lead_sgm: bool = False
-    write_gf: bool = False
-    do_eigenchannels: bool = False
-    neigchnx: NonNegativeInt = 200000
-    do_eigplot: bool = False
-    ie_eigplot: NonNegativeInt = 0
-    ik_eigplot: NonNegativeInt = 0
+class FileNamesData(PydanticBaseModel):
     work_dir: str = "./"
     prefix: str = ""
     postfix: str = ""
@@ -110,14 +80,144 @@ class ConductorData(PydanticBaseModel):
     datafile_L_sgm: str = ""
     datafile_C_sgm: str = ""
     datafile_R_sgm: str = ""
+
+
+class HamiltonianData(PydanticBaseModel):
+    H00_C: Optional[Dict[str, Any]] = None
+    H_CR: Optional[Dict[str, Any]] = None
+    H_LC: Optional[Dict[str, Any]] = None
+    H00_L: Optional[Dict[str, Any]] = None
+    H01_L: Optional[Dict[str, Any]] = None
+    H00_R: Optional[Dict[str, Any]] = None
+    H01_R: Optional[Dict[str, Any]] = None
+
+
+class KPointGridSettings(PydanticBaseModel):
+    nk: List[NonNegativeInt] = [0, 0]
+    s: List[NonNegativeInt] = [0, 0]
+    nkpts_par: NonNegativeInt = 1
+    nrtot_par: NonNegativeInt = 1
+
+    @validator("nk")
+    def check_nk(cls, value) -> None:
+        if any(v < 0 for v in value):
+            raise ValueError("Invalid nk: all values must be non-negative")
+        return value
+
+    @validator("s")
+    def check_s(cls, value) -> None:
+        if any(v < 0 or v > 1 for v in value):
+            raise ValueError("Invalid s: all values must be 0 or 1")
+        return value
+
+
+class EnergySettings(PydanticBaseModel):
+    emin: float = -10.0
+    emax: float = 10.0
+    delta: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.3)] = 1e-5
+    smearing_type: SmearingType = "lorentzian"
+    delta_ratio: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.1)] = 5.0e-3
+    xmax: Annotated[NonNegativeFloat, confloat(ge=10)] = 25.0
+    energy_step: NonNegativeFloat = 0.001
+    nx_smear: NonNegativeInt = 20000
+
+    @validator("emax")
+    def check_emax(cls, value, values):
+        emin = values.get("emin", None)
+        if emin is not None and value <= emin:
+            raise ValueError("emax has to be greater than emin")
+        return value
+
+    @validator("xmax")
+    def check_xmax(cls, value) -> None:
+        if value < 10.0:
+            raise ValueError("xmax is too small")
+        return value
+
+    @validator("delta_ratio")
+    def check_delta_ratio(cls, value) -> None:
+        if value < 0:
+            raise ValueError("delta_ratio is negative")
+        if value > 0.1:
+            raise ValueError("delta_ratio is too large")
+        return value
+
+
+class SymmetryOutputOptions(PydanticBaseModel):
+    use_sym: bool = True
+    write_kdata: bool = False
+    write_lead_sgm: bool = False
+    write_gf: bool = False
+    do_eigenchannels: bool = False
+    neigchnx: NonNegativeInt = 200000
+    do_eigplot: bool = False
+    ie_eigplot: NonNegativeInt = 0
+    ik_eigplot: NonNegativeInt = 0
+
+    @validator("neigchnx")
+    def check_neigchnx(cls, value) -> None:
+        if value < 0:
+            raise ValueError("invalid neigchnx")
+        return value
+
+    @validator("ie_eigplot")
+    def check_ie_eigplot(cls, value) -> None:
+        if value < 0:
+            raise ValueError("invalid ie_eigplot")
+        return value
+
+    @validator("ik_eigplot")
+    def check_ik_eigplot(cls, value) -> None:
+        if value < 0:
+            raise ValueError("invalid ik_eigplot")
+        return value
+
+
+class IterationConvergenceSettings(PydanticBaseModel):
+    nprint: PositiveInt = 20
+    niterx: PositiveInt = 200
+    nfailx: PositiveInt = 5
+    transfer_thr: NonNegativeFloat = 1e-7
+
+    @validator("nprint")
+    def check_nprint(cls, value) -> None:
+        if value <= 0:
+            raise ValueError("nprint has to be greater than 0")
+        return value
+
+    @validator("niterx")
+    def check_niterx(cls, value) -> None:
+        if value <= 0:
+            raise ValueError("niterx has to be greater than 0")
+        return value
+
+    @validator("transfer_thr")
+    def check_transfer_thr(cls, value) -> None:
+        if value <= 0:
+            raise ValueError("invalid value for transfer_thr")
+        return value
+
+
+class AtomicProjectionOverlapSettings(PydanticBaseModel):
     do_orthoovp: bool = False
     atmproj_sh: NonNegativeFloat = 5.0
     atmproj_thr: Annotated[NonNegativeFloat, confloat(ge=0.0, le=1.0)] = 0.9
     atmproj_nbnd: NonNegativeInt = 0
-    shift_L: NonNegativeFloat = 0.0
-    shift_C: NonNegativeFloat = 0.0
-    shift_R: NonNegativeFloat = 0.0
-    shift_corr: NonNegativeFloat = 0.0
+
+    @validator("atmproj_thr")
+    def check_atmproj_thr(cls, value) -> None:
+        if value > 1.0 or value < 0.0:
+            raise ValueError("invalid atmproj_thr")
+        return value
+
+    @validator("atmproj_nbnd")
+    def check_atmproj_nbnd(cls, value) -> None:
+        if value < 0.0:
+            raise ValueError("invalid atmproj_nbnd")
+        return value
+
+
+class AdvancedSettings(PydanticBaseModel):
     debug_level: int = 0
     ispin: int = 0
     surface: bool = False
@@ -125,22 +225,39 @@ class ConductorData(PydanticBaseModel):
     lhave_corr: bool = False
     ldynam_corr: bool = False
     leads_are_identical: bool = True
-    energy_step: NonNegativeFloat = 0.001
-    delta: NonNegativeFloat = 0.0005
-    nx_smear: NonNegativeInt = 20000
-    nkpts_par: NonNegativeInt = 1
-    nrtot_par: NonNegativeInt = 1
 
-    # Should probably be split into classes separate for conductor and
-    # Hamiltonian. Keeping them combined for now.
+    @validator("ispin")
+    def check_ispin(cls, value) -> None:
+        if value < 0 or value > 2:
+            raise ValueError("Invalid ispin")
+        return value
 
-    H00_C: Dict[str, Any] = None
-    H_CR: Dict[str, Any] = None
-    H_LC: Dict[str, Any] = None
-    H00_L: Dict[str, Any] = None
-    H01_L: Dict[str, Any] = None
-    H00_R: Dict[str, Any] = None
-    H01_R: Dict[str, Any] = None
+
+class ConductorData(
+    FileNamesData,
+    HamiltonianData,
+    KPointGridSettings,
+    EnergySettings,
+    SymmetryOutputOptions,
+    IterationConvergenceSettings,
+    AtomicProjectionOverlapSettings,
+    AdvancedSettings,
+    PydanticBaseModel,
+):
+    dimL: NonNegativeInt = 0
+    dimR: NonNegativeInt = 0
+    dimC: NonNegativeInt = 0
+    transport_dir: Annotated[int, conint(ge=1, le=3)] = 0
+    calculation_type: CalculationType = "conductor"
+    conduct_formula: ConductFormula = "landauer"
+    carriers: Carriers = "electrons"
+    ne: Annotated[PositiveInt, conint(gt=1)] = 1000
+    ne_buffer: PositiveInt = 1
+    bias: NonNegativeFloat = 0.0
+    shift_L: NonNegativeFloat = 0.0
+    shift_C: NonNegativeFloat = 0.0
+    shift_R: NonNegativeFloat = 0.0
+    shift_corr: NonNegativeFloat = 0.0
 
     def __init__(self, filename: str, *, validate: bool = True, **data: Any) -> None:
         input_dict = self.read(filename)
@@ -184,7 +301,6 @@ class ConductorData(PydanticBaseModel):
                 raise ValueError(f"Unable to find {self.datafile_R}")
 
         if self.calculation_type == "bulk":
-            # Check whether user explicitly specified dimL/dimR
             user_provided_fields = set(self.model_fields_set)
             if "dimL" in user_provided_fields or "dimR" in user_provided_fields:
                 raise ValueError("dimL and dimR should not be set in bulk mode")
@@ -251,86 +367,6 @@ class ConductorData(PydanticBaseModel):
     def check_ne_buffer(cls, value) -> None:
         if value <= 0:
             raise ValueError("ne_buffer has to be greater than 0")
-        return value
-
-    @validator("niterx")
-    def check_niterx(cls, value) -> None:
-        if value <= 0:
-            raise ValueError("niterx has to be greater than 0")
-        return value
-
-    @validator("nprint")
-    def check_nprint(cls, value) -> None:
-        if value <= 0:
-            raise ValueError("nprint has to be greater than 0")
-        return value
-
-    @validator("nk")
-    def check_nk(cls, value) -> None:
-        if any(value) < 0:
-            raise ValueError("Invalid nk")
-        return value
-
-    @validator("s")
-    def check_s(cls, value) -> None:
-        if any(value) < 0 or any(value) > 1:
-            raise ValueError("Invalid s")
-        return value
-
-    @validator("xmax")
-    def check_xmax(cls, value) -> None:
-        if value < 10.0:
-            raise ValueError("xmax is too small")
-        return value
-
-    @validator("delta_ratio")
-    def check_delta_ratio(cls, value) -> None:
-        if value < 0:
-            raise ValueError("delta_ratio is negative")
-        if value > 0.1:
-            raise ValueError("delta_ratio is too large")
-        return value
-
-    @validator("ispin")
-    def check_ispin(cls, value) -> None:
-        if value < 0 or value > 2:
-            raise ValueError("Invalid ispin")
-        return value
-
-    @validator("neigchnx")
-    def check_neigchnx(cls, value) -> None:
-        if value < 0:
-            raise ValueError("invalid neigchnx")
-        return value
-
-    @validator("ie_eigplot")
-    def check_ie_eigplot(cls, value) -> None:
-        if value < 0:
-            raise ValueError("invalid ie_eigplot")
-        return value
-
-    @validator("ik_eigplot")
-    def check_ik_eigplot(cls, value) -> None:
-        if value < 0:
-            raise ValueError("invalid ik_eigplot")
-        return value
-
-    @validator("transfer_thr")
-    def check_transfer_thr(cls, value) -> None:
-        if value <= 0:
-            raise ValueError("invalid value for transfer_thr")
-        return value
-
-    @validator("atmproj_thr")
-    def check_atmproj_thr(cls, value) -> None:
-        if value > 1.0 or value < 0.0:
-            raise ValueError("invalid atmproj_thr")
-        return value
-
-    @validator("atmproj_nbnd")
-    def check_atmproj_nbnd(cls, value) -> None:
-        if value < 0.0:
-            raise ValueError("invalid atmproj_nbnd")
         return value
 
 
