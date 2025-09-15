@@ -1,17 +1,3 @@
-# BUG
-### Note : Broadcasting of input_dict can't be tested because mpirun only works
-### correctly on Python 3.9. pydantic and typing_extensions only work on
-### Python 3.10. Code runs in series but when running in parallel
-# ModuleNotFoundError: No module named 'typing_extensions'. Output of running
-# mpi4py on two different versions of python shown below.
-
-##mpirun -np 2 python3.10 test.py
-# World Size: 1   Rank: 0
-# World Size: 1   Rank: 0
-##mpirun -np 2 python3.9 test.py
-# World Size: 2   Rank: 1
-# World Size: 2   Rank: 0
-
 from typing import (
     Any,
     List,
@@ -24,6 +10,7 @@ from typing_extensions import Annotated
 from pathlib import Path
 from yaml import load, SafeLoader
 import numpy as np
+from dataclasses import dataclass
 from PAOFLOW_QTpy.utils.constants import rydcm1, amconv
 
 
@@ -31,6 +18,7 @@ from pydantic import (
     NonNegativeFloat,
     NonNegativeInt,
     PositiveInt,
+    PrivateAttr,
     confloat,
     conint,
     BaseModel as PydanticBaseModel,
@@ -68,7 +56,6 @@ FileFormat = Literal[
 ]
 
 
-# TODO make input from YAML case insensitive
 class FileNamesData(PydanticBaseModel):
     work_dir: str = "./"
     prefix: str = ""
@@ -80,6 +67,12 @@ class FileNamesData(PydanticBaseModel):
     datafile_L_sgm: str = ""
     datafile_C_sgm: str = ""
     datafile_R_sgm: str = ""
+
+    @validator("datafile_C")
+    def check_datafile_C(cls, value) -> str:
+        if len(value) == 0:
+            raise ValueError("datafile_C unspecified")
+        return value
 
 
 class HamiltonianData(PydanticBaseModel):
@@ -114,6 +107,8 @@ class KPointGridSettings(PydanticBaseModel):
 class EnergySettings(PydanticBaseModel):
     emin: float = -10.0
     emax: float = 10.0
+    ne: Annotated[PositiveInt, conint(gt=1)] = 1000
+    ne_buffer: Annotated[PositiveInt, conint(gt=0)] = 1
     delta: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.3)] = 1e-5
     smearing_type: SmearingType = "lorentzian"
     delta_ratio: Annotated[NonNegativeFloat, confloat(ge=0.0, le=0.1)] = 5.0e-3
@@ -126,6 +121,18 @@ class EnergySettings(PydanticBaseModel):
         emin = values.get("emin", None)
         if emin is not None and value <= emin:
             raise ValueError("emax has to be greater than emin")
+        return value
+
+    @validator("ne")
+    def check_ne(cls, value) -> None:
+        if value <= 1:
+            raise ValueError("ne has to be greater than 1")
+        return value
+
+    @validator("ne_buffer")
+    def check_ne_buffer(cls, value) -> None:
+        if value <= 0:
+            raise ValueError("ne_buffer has to be greater than 0")
         return value
 
     @validator("xmax")
@@ -233,17 +240,33 @@ class AdvancedSettings(PydanticBaseModel):
         return value
 
 
-class ConductorData(
-    FileNamesData,
-    HamiltonianData,
-    KPointGridSettings,
-    EnergySettings,
-    SymmetryOutputOptions,
-    IterationConvergenceSettings,
-    AtomicProjectionOverlapSettings,
-    AdvancedSettings,
-    PydanticBaseModel,
-):
+@dataclass
+class RuntimeData:
+    nproc: int
+    prefix: str
+    work_dir: str
+    nk_par: list[int]
+    s_par: list[int]
+    nk_par3d: np.ndarray
+    s_par3d: np.ndarray
+    nr_par3d: np.ndarray
+    vkpt_par3D: np.ndarray
+    wk_par: np.ndarray
+    ivr_par3D: np.ndarray
+    wr_par: np.ndarray
+    nkpts_par: int
+    nrtot_par: int
+
+
+class ConductorData(PydanticBaseModel):
+    file_names: FileNamesData
+    hamiltonian: HamiltonianData
+    kpoint_grid: KPointGridSettings
+    energy: EnergySettings
+    symmetry: SymmetryOutputOptions
+    iteration: IterationConvergenceSettings
+    atomic_proj: AtomicProjectionOverlapSettings
+    advanced: AdvancedSettings
     dimL: NonNegativeInt = 0
     dimR: NonNegativeInt = 0
     dimC: NonNegativeInt = 0
@@ -251,39 +274,74 @@ class ConductorData(
     calculation_type: CalculationType = "conductor"
     conduct_formula: ConductFormula = "landauer"
     carriers: Carriers = "electrons"
-    ne: Annotated[PositiveInt, conint(gt=1)] = 1000
-    ne_buffer: PositiveInt = 1
+
     bias: NonNegativeFloat = 0.0
     shift_L: NonNegativeFloat = 0.0
     shift_C: NonNegativeFloat = 0.0
     shift_R: NonNegativeFloat = 0.0
     shift_corr: NonNegativeFloat = 0.0
 
+    _runtime: RuntimeData = PrivateAttr(default=None)
+
+    def set_runtime_data(self, runtime: RuntimeData) -> None:
+        self._runtime = runtime
+
+    def get_runtime_data(self) -> RuntimeData:
+        return self._runtime
+
     def __init__(self, filename: str, *, validate: bool = True, **data: Any) -> None:
-        input_dict = self.read(filename)
-        data.update(input_dict)
+        def filter_keys(cls, d):
+            return {k: d[k] for k in cls.__fields__ if k in d}
+
+        data["file_names"] = FileNamesData(**filter_keys(FileNamesData, data))
+        data["hamiltonian"] = HamiltonianData(**filter_keys(HamiltonianData, data))
+        data["kpoint_grid"] = KPointGridSettings(
+            **filter_keys(KPointGridSettings, data)
+        )
+        data["energy"] = EnergySettings(**filter_keys(EnergySettings, data))
+        data["symmetry"] = SymmetryOutputOptions(
+            **filter_keys(SymmetryOutputOptions, data)
+        )
+        data["iteration"] = IterationConvergenceSettings(
+            **filter_keys(IterationConvergenceSettings, data)
+        )
+        data["atomic_proj"] = AtomicProjectionOverlapSettings(
+            **filter_keys(AtomicProjectionOverlapSettings, data)
+        )
+        data["advanced"] = AdvancedSettings(**filter_keys(AdvancedSettings, data))
+        for key in [
+            "dimL",
+            "dimR",
+            "dimC",
+            "transport_dir",
+            "calculation_type",
+            "conduct_formula",
+            "carriers",
+            "ne",
+            "ne_buffer",
+            "bias",
+            "shift_L",
+            "shift_C",
+            "shift_R",
+            "shift_corr",
+        ]:
+            if key in data:
+                data[key] = data[key]
         super().__init__(**data)
         if validate:
             self.validate_input()
 
-    def read(self, filename: str) -> Dict[str, Any]:
-        try:
-            with open(Path(filename).absolute()) as f:
-                return load(f, SafeLoader)
-        except Exception:
-            raise
-
     def validate_input(self) -> None:
-        if self.datafile_C is None:
-            raise ValueError(f"Unable to find {self.datafile_C}")
+        if self.file_names.datafile_C is None:
+            raise ValueError(f"Unable to find {self.file_names.datafile_C}")
 
-        if self.ie_eigplot > 0.0 and not self.do_eigplot:
+        if self.symmetry.ie_eigplot > 0.0 and not self.symmetry.do_eigplot:
             raise ValueError("ie_eigplot needs do_eigplot")
 
-        if self.ik_eigplot > 0.0 and not self.do_eigplot:
+        if self.symmetry.ik_eigplot > 0.0 and not self.symmetry.do_eigplot:
             raise ValueError("ik_eigplot needs do_eigplot")
 
-        if self.emax <= self.emin:
+        if self.energy.emax <= self.energy.emin:
             raise ValueError("emax has to be greater than emin")
 
         if self.calculation_type == "conductor":
@@ -291,14 +349,14 @@ class ConductorData(
                 raise ValueError("dimL needs to be positive")
             if self.dimR <= 0:
                 raise ValueError("dimR needs to be positive")
-            if len(self.datafile_L) == 0:
+            if len(self.file_names.datafile_L) == 0:
                 raise ValueError("datafile_L unspecified")
-            if len(self.datafile_R) == 0:
+            if len(self.file_names.datafile_R) == 0:
                 raise ValueError("datafile_R unspecified")
-            if not self.datafile_L:
-                raise ValueError(f"Unable to find {self.datafile_L}")
-            if not self.datafile_R:
-                raise ValueError(f"Unable to find {self.datafile_R}")
+            if not self.file_names.datafile_L:
+                raise ValueError(f"Unable to find {self.file_names.datafile_L}")
+            if not self.file_names.datafile_R:
+                raise ValueError(f"Unable to find {self.file_names.datafile_R}")
 
         if self.calculation_type == "bulk":
             user_provided_fields = set(self.model_fields_set)
@@ -307,9 +365,9 @@ class ConductorData(
             self.dimL = self.dimC
             self.dimR = self.dimC
 
-            if len(self.datafile_L.strip()) != 0:
+            if len(self.file_names.datafile_L.strip()) != 0:
                 raise ValueError("datafile_L should not be specified in bulk mode")
-            if len(self.datafile_R.strip()) != 0:
+            if len(self.file_names.datafile_R.strip()) != 0:
                 raise ValueError("datafile_R should not be specified in bulk mode")
 
             self.dimL = self.dimC
@@ -317,25 +375,25 @@ class ConductorData(
 
         if (
             self.conduct_formula != "landauer"
-            and len(self.datafile_sgm) == 0
-            and len(self.datafile_C_sgm) == 0
+            and len(self.file_names.datafile_sgm) == 0
+            and len(self.file_names.datafile_C_sgm) == 0
         ):
             raise ValueError("Invalid conduct formula")
 
-        if self.do_eigplot and not self.do_eigenchannels:
+        if self.symmetry.do_eigplot and not self.symmetry.do_eigenchannels:
             raise ValueError("do_eigplot needs do_eigenchannels")
 
-        if self.write_lead_sgm and self.use_sym:
+        if self.symmetry.write_lead_sgm and self.symmetry.use_sym:
             raise ValueError("use_sym and write_lead_sgm not implemented")
 
-        if self.write_gf and self.use_sym:
+        if self.symmetry.write_gf and self.symmetry.use_sym:
             raise ValueError("use_sym and write_gf not implemented")
 
         if self.carriers == "phonons":
-            self.emin = self.emin**2 / (rydcm1 / np.sqrt(amconv)) ** 2
-            if self.emin < 0.0:
+            self.energy.emin = self.energy.emin**2 / (rydcm1 / np.sqrt(amconv)) ** 2
+            if self.energy.emin < 0.0:
                 raise ValueError("emin < 0.0, invalid emin")
-            self.emax = self.emax**2 / (rydcm1 / np.sqrt(amconv)) ** 2
+            self.energy.emax = self.energy.emax**2 / (rydcm1 / np.sqrt(amconv)) ** 2
 
     @validator("transport_dir")
     def check_transport_dir(cls, value) -> None:
@@ -349,24 +407,6 @@ class ConductorData(
     def check_dimC(cls, value) -> None:
         if value <= 0:
             raise ValueError("dimC needs to be positive")
-        return value
-
-    @validator("datafile_C")
-    def check_datafile_C(cls, value) -> str:
-        if len(value) == 0:
-            raise ValueError("datafile_C unspecified")
-        return value
-
-    @validator("ne")
-    def check_ne(cls, value) -> None:
-        if value <= 1:
-            raise ValueError("ne has to be greater than 1")
-        return value
-
-    @validator("ne_buffer")
-    def check_ne_buffer(cls, value) -> None:
-        if value <= 0:
-            raise ValueError("ne_buffer has to be greater than 0")
         return value
 
 

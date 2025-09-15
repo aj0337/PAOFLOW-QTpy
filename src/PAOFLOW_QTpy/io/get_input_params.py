@@ -8,13 +8,13 @@ def get_input_from_yaml(yaml_file: str) -> dict:
         return yaml.safe_load(content)
 
 
-def load_conductor_data_from_yaml(yaml_path: str, comm=None) -> dict:
+def load_conductor_data_from_yaml(yaml_path: str, comm=None) -> ConductorData:
     """
     Load and validate conductor input parameters from a YAML configuration file.
 
     This function parses the YAML file, extracts the `input_conductor` and
     `hamiltonian_data` sections, validates the conductor input against the
-    `ConductorData` schema, and returns the combined result as a dictionary.
+    `ConductorData` schema, and returns the result as a ConductorData object.
 
     Parameters
     ----------
@@ -25,19 +25,16 @@ def load_conductor_data_from_yaml(yaml_path: str, comm=None) -> dict:
 
     Returns
     -------
-    dict
-        Dictionary of validated conductor input parameters. Contains all fields
-        defined in `ConductorData`, along with a `hamiltonian_data` entry.
+    ConductorData
+        Validated ConductorData object.
     """
 
     full_yaml = get_input_from_yaml(yaml_path)
-    input_conductor = full_yaml.get("input_conductor", {})
-    hamiltonian_data = full_yaml.get("hamiltonian_data", {})
-    validated = ConductorData(filename=yaml_path, validate=True, **input_conductor)
-    result = validated.model_dump()
-    result["hamiltonian_data"] = hamiltonian_data
-
-    return result
+    merged = {}
+    for section in ("input_conductor", "hamiltonian_data"):
+        merged.update(full_yaml.get(section, {}))
+    validated = ConductorData(filename=yaml_path, validate=True, **merged)
+    return validated
 
 
 def load_current_data_from_yaml(yaml_path: str) -> dict | None:

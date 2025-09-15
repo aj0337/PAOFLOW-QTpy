@@ -16,6 +16,7 @@ from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.get_input_params import load_conductor_data_from_yaml
+from PAOFLOW_QTpy.io.input_parameters import RuntimeData
 from PAOFLOW_QTpy.kpoints import (
     compute_fourier_phase_table,
     initialize_meshsize,
@@ -35,10 +36,6 @@ comm = MPI.COMM_WORLD
 
 
 def parse_args():
-    """
-    Parse command-line arguments for the driver script.
-    Returns the YAML file path as a string.
-    """
     if len(sys.argv) != 2:
         if comm.rank == 0:
             print("Usage: python main.py <yaml_file>")
@@ -50,28 +47,22 @@ def main():
     global_timing.start("conductor")
 
     yaml_file = parse_args()
-    data_dict = load_conductor_data_from_yaml(yaml_file)
-    datafile_C = data_dict["datafile_C"]
-    datafile_L = data_dict["datafile_L"]
-    datafile_R = data_dict["datafile_R"]
-    datafile_L_sgm = data_dict["datafile_L_sgm"]
-    datafile_R_sgm = data_dict["datafile_R_sgm"]
+    data = load_conductor_data_from_yaml(yaml_file)
 
-    prefix = os.path.basename(datafile_C)
-    work_dir = "./al5.save"
-    atmproj_sh = data_dict["atmproj_sh"]
-    atmproj_thr = data_dict["atmproj_thr"]
-    do_orthoovp = data_dict["do_orthoovp"]
-    calculation_type = data_dict["calculation_type"]
-
-    data_dict["nproc"] = comm.Get_size()
+    prefix = os.path.basename(data.file_names.datafile_C)
+    work_dir = data.file_names.work_dir
+    atmproj_sh = data.atomic_proj.atmproj_sh
+    atmproj_thr = data.atomic_proj.atmproj_thr
+    do_orthoovp = data.atomic_proj.do_orthoovp
+    calculation_type = data.calculation_type
+    nproc = comm.Get_size()
 
     startup("conductor.py")
     write_header("Conductor Initialization")
 
     global_timing.start("atmproj_to_internal")
     hk_data = parse_atomic_proj(
-        file_proj=datafile_C,
+        file_proj=data.file_names.datafile_C,
         work_dir=work_dir,
         prefix=prefix,
         atmproj_sh=atmproj_sh,
@@ -81,49 +72,49 @@ def main():
     )
     global_timing.stop("atmproj_to_internal")
 
-    data_dict["nk_par"], data_dict["nr_par"] = initialize_meshsize(
-        nr_full=hk_data["nr"], transport_dir=data_dict["transport_dir"]
+    nk_par, nr_par = initialize_meshsize(
+        nr_full=hk_data["nr"], transport_dir=data.transport_dir
     )
 
-    s_par = data_dict["s"][:2]
-    nk_par3d = kpoints_mask(data_dict["nk_par"], 1, data_dict["transport_dir"])
-    s_par3d = kpoints_mask(s_par, 0, data_dict["transport_dir"])
-    nr_par3d = kpoints_mask(data_dict["nr_par"], 1, data_dict["transport_dir"])
+    s_par = data.kpoint_grid.s[:2]
+    nk_par3d = kpoints_mask(nk_par, 1, data.transport_dir)
+    s_par3d = kpoints_mask(s_par, 0, data.transport_dir)
+    nr_par3d = kpoints_mask(nr_par, 1, data.transport_dir)
 
     vkpt_par3D, wk_par = initialize_kpoints(
-        data_dict["nk_par"],
+        nk_par,
         s_par=s_par,
-        transport_dir=data_dict["transport_dir"],
-        use_sym=data_dict["use_sym"],
+        transport_dir=data.transport_dir,
+        use_sym=data.symmetry.use_sym,
     )
-    ivr_par3D, wr_par = initialize_r_vectors(
-        data_dict["nr_par"], data_dict["transport_dir"]
-    )
+    ivr_par3D, wr_par = initialize_r_vectors(nr_par, data.transport_dir)
 
-    data_dict.update(
-        {
-            "nkpts_par": vkpt_par3D.shape[0],
-            "nrtot_par": ivr_par3D.shape[0],
-            "vkpt_par3D": vkpt_par3D.T,
-            "wk_par": wk_par,
-            "ivr_par3D": ivr_par3D.T,
-            "wr_par": wr_par,
-            "nk_par3d": nk_par3d,
-            "s_par3d": s_par3d,
-            "nr_par3d": nr_par3d,
-        }
+    data.set_runtime_data(
+        runtime=RuntimeData(
+            nproc=nproc,
+            prefix=prefix,
+            work_dir=work_dir,
+            nk_par=nk_par,
+            s_par=s_par,
+            nk_par3d=nk_par3d,
+            s_par3d=s_par3d,
+            nr_par3d=nr_par3d,
+            vkpt_par3D=vkpt_par3D.T,
+            wk_par=wk_par,
+            ivr_par3D=ivr_par3D.T,
+            wr_par=wr_par,
+            nkpts_par=vkpt_par3D.shape[0],
+            nrtot_par=ivr_par3D.shape[0],
+        )
     )
-
-    print_summary(data_dict)
+    print_summary(data)
 
     memory_tracker = MemoryTracker()
 
     smearing_data = SmearingData(smearing_func=smearing_func)
-
     global_timing.start("smearing_init")
     smearing_data.initialize()
     global_timing.stop("smearing_init")
-
     memory_tracker.register_section(
         "smearing", smearing_data.memory_usage, is_allocated=True
     )
@@ -137,10 +128,9 @@ def main():
         "kpoints", kpoints_data.memory_usage, is_allocated=True
     )
 
-    dimL = data_dict["dimL"]
-    dimC = data_dict["dimC"]
-    dimR = data_dict["dimR"]
-    nkpts_par = data_dict["nkpts_par"]
+    dimL, dimC, dimR = data.dimL, data.dimC, data.dimR
+    nkpts_par = data.get_runtime_data().nkpts_par
+
     ham_sys = HamiltonianSystem(dimL, dimC, dimR, nkpts_par)
     memory_tracker.register_section(
         "hamiltonian data",
@@ -158,28 +148,26 @@ def main():
     global_timing.stop("cft_1z")
 
     global_timing.start("hamiltonian_init")
-
     initialize_hamiltonian_blocks(
         ham_system=ham_sys,
         ivr_par3D=ivr_par3D.T,
         wr_par=wr_par,
         table_par=table_par,
-        datafile_C=datafile_C,
-        datafile_L=datafile_L,
-        datafile_R=datafile_R,
-        ispin=data_dict["ispin"],
-        transport_dir=data_dict["transport_dir"],
+        datafile_C=data.file_names.datafile_C,
+        datafile_L=data.file_names.datafile_L,
+        datafile_R=data.file_names.datafile_R,
+        ispin=data.advanced.ispin,
+        transport_dir=data.transport_dir,
         calculation_type=calculation_type,
     )
-
     global_timing.stop("hamiltonian_init")
 
-    data_dict["leads_are_identical"] = check_leads_are_identical(
+    data.advanced.leads_are_identical = check_leads_are_identical(
         ham_system=ham_sys,
-        datafile_L=datafile_L,
-        datafile_R=datafile_R,
-        datafile_L_sgm=datafile_L_sgm,
-        datafile_R_sgm=datafile_R_sgm,
+        datafile_L=data.file_names.datafile_L,
+        datafile_R=data.file_names.datafile_R,
+        datafile_L_sgm=data.file_names.datafile_L_sgm,
+        datafile_R_sgm=data.file_names.datafile_R_sgm,
     )
 
     workspace = Workspace()
@@ -188,10 +176,10 @@ def main():
         dimC=dimC,
         dimR=dimR,
         dimx_lead=max(dimL, dimR),
-        nkpts_par=nkpts_par,
-        nrtot_par=data_dict["nrtot_par"],
-        write_lead_sgm=data_dict["write_lead_sgm"],
-        write_gf=data_dict["write_gf"],
+        nkpts_par=data.get_runtime_data().nkpts_par,
+        nrtot_par=data.get_runtime_data().nrtot_par,
+        write_lead_sgm=data.symmetry.write_lead_sgm,
+        write_gf=data.symmetry.write_gf,
     )
     memory_tracker.register_section(
         "workspace", workspace.memusage, is_allocated=workspace.allocated
@@ -201,54 +189,30 @@ def main():
 
     write_header("Frequency Loop")
 
-    data_dict["_freqloop_start_time"] = perf_counter()
+    data._freqloop_start_time = perf_counter()
 
     global_timing.start("do_conductor")
+    egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
     conduct, dos, conduct_k, dos_k = run_conductor(
-        data_dict=data_dict,
-        ne=data_dict["ne"],
-        egrid=np.linspace(data_dict["emin"], data_dict["emax"], data_dict["ne"]),
-        nkpts_par=nkpts_par,
-        shifts={
-            "shift_L": data_dict["shift_L"],
-            "shift_C": data_dict["shift_C"],
-            "shift_R": data_dict["shift_R"],
-        },
+        data=data,
         blc_blocks=ham_sys.blocks,
+        egrid=egrid,
         wk_par=wk_par,
         vkpt_par3D=vkpt_par3D,
-        transport_dir=data_dict["transport_dir"],
-        conduct_formula=data_dict["conduct_formula"],
-        do_eigenchannels=data_dict["do_eigenchannels"],
-        neigchnx=data_dict["neigchnx"],
-        do_eigplot=data_dict["do_eigplot"],
-        ie_eigplot=data_dict["ie_eigplot"],
-        ik_eigplot=data_dict["ik_eigplot"],
-        leads_are_identical=data_dict["leads_are_identical"],
-        surface=data_dict["surface"],
-        lhave_corr=data_dict["lhave_corr"],
-        ldynam_corr=data_dict["ldynam_corr"],
-        delta=data_dict["delta"],
-        niterx=data_dict["niterx"],
-        transfer_thr=data_dict["transfer_thr"],
-        nprint=data_dict["nprint"],
-        write_gf=data_dict["write_gf"],
-        write_lead_sgm=data_dict["write_lead_sgm"],
     )
+
     global_timing.stop("do_conductor")
 
     write_header("Writing data")
 
     if comm.rank == 0:
         output_dir = Path("output")
-        egrid = np.linspace(data_dict["emin"], data_dict["emax"], data_dict["ne"])
-
         write_data(
-            egrid, conduct, "conductance", output_dir, postfix=data_dict["postfix"]
+            egrid, conduct, "conductance", output_dir, postfix=data.file_names.postfix
         )
-        write_data(egrid, dos, "doscond", output_dir, postfix=data_dict["postfix"])
+        write_data(egrid, dos, "doscond", output_dir, postfix=data.file_names.postfix)
 
-        if data_dict["write_kdata"]:
+        if data.symmetry.write_kdata:
             for ik in range(nkpts_par):
                 ik_str = f"{ik + 1:04d}"
                 filename_cond = f"{prefix}_cond-{ik_str}.dat"
@@ -256,7 +220,7 @@ def main():
 
                 with (output_dir / filename_cond).open("w") as f:
                     f.write("# E (eV)   cond(E)\n")
-                    for ie in range(data_dict["ne"]):
+                    for ie in range(data.energy.ne):
                         values = " ".join(
                             f"{conduct_k[ch, ik, ie]:15.9f}"
                             for ch in range(conduct_k.shape[0])
@@ -265,7 +229,7 @@ def main():
 
                 with (output_dir / filename_dos).open("w") as f:
                     f.write("# E (eV)   doscond(E)\n")
-                    for ie in range(data_dict["ne"]):
+                    for ie in range(data.energy.ne):
                         f.write(f"{egrid[ie]:15.9f} {dos_k[ie, ik]:15.9f}\n")
 
     global_timing.stop("conductor")
