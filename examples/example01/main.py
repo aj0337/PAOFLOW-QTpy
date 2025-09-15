@@ -11,7 +11,6 @@ from PAOFLOW_QTpy.hamiltonian_init import (
     initialize_hamiltonian_blocks,
 )
 from PAOFLOW_QTpy.io.startup import startup
-from PAOFLOW_QTpy.io.write_data import write_data
 from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
@@ -200,7 +199,7 @@ def main():
         wk_par=wk_par,
         vkpt_par3D=vkpt_par3D,
     )
-    conduct, dos, conduct_k, dos_k = calculator.run()
+    calculator.run()
 
     global_timing.stop("do_conductor")
 
@@ -208,30 +207,7 @@ def main():
 
     if comm.rank == 0:
         output_dir = Path("output")
-        write_data(
-            egrid, conduct, "conductance", output_dir, postfix=data.file_names.postfix
-        )
-        write_data(egrid, dos, "doscond", output_dir, postfix=data.file_names.postfix)
-
-        if data.symmetry.write_kdata:
-            for ik in range(nkpts_par):
-                ik_str = f"{ik + 1:04d}"
-                filename_cond = f"{prefix}_cond-{ik_str}.dat"
-                filename_dos = f"{prefix}_doscond-{ik_str}.dat"
-
-                with (output_dir / filename_cond).open("w") as f:
-                    f.write("# E (eV)   cond(E)\n")
-                    for ie in range(data.energy.ne):
-                        values = " ".join(
-                            f"{conduct_k[ch, ik, ie]:15.9f}"
-                            for ch in range(conduct_k.shape[0])
-                        )
-                        f.write(f"{egrid[ie]:15.9f} {values}\n")
-
-                with (output_dir / filename_dos).open("w") as f:
-                    f.write("# E (eV)   doscond(E)\n")
-                    for ie in range(data.energy.ne):
-                        f.write(f"{egrid[ie]:15.9f} {dos_k[ie, ik]:15.9f}\n")
+        calculator.write_output(output_dir, postfix=data.file_names.postfix)
 
     global_timing.stop("conductor")
     global_timing.report()

@@ -4,6 +4,7 @@ from pathlib import Path
 from mpi4py import MPI
 import numpy as np
 import numpy.typing as npt
+import os
 
 from PAOFLOW_QTpy.io.write_data import (
     write_eigenchannels,
@@ -18,6 +19,7 @@ from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
 from PAOFLOW_QTpy.utils.timing import global_timing
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
+from PAOFLOW_QTpy.io.write_data import write_data
 
 
 class ConductorCalculator:
@@ -53,17 +55,18 @@ class ConductorCalculator:
         self.nrtot_par = int(self.runtime.nrtot_par)
 
     def run(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        conduct, dos, conduct_k, dos_k = self._initialize_outputs()
-
+        self.conduct, self.dos, self.conduct_k, self.dos_k = self.initialize_outputs()
         ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
         for ie_g in range(ie_start, ie_end + 1):
-            conduct, dos = self._process_energy(conduct, dos, conduct_k, dos_k, ie_g)
+            self.conduct, self.dos = self.process_energy(
+                self.conduct, self.dos, self.conduct_k, self.dos_k, ie_g
+            )
+        self.reduce_results(self.conduct, self.dos, self.conduct_k, self.dos_k)
+        self.write_operators()
 
-        self._reduce_results(conduct, dos, conduct_k, dos_k)
-        self._write_results()
-        return conduct, dos, conduct_k, dos_k
+        return self.conduct, self.dos, self.conduct_k, self.dos_k
 
-    def _initialize_outputs(self):
+    def initialize_outputs(self):
         do_eigenchannels = self.data.symmetry.do_eigenchannels
         neigchnx = self.data.symmetry.neigchnx
         neigchn = (
@@ -99,20 +102,20 @@ class ConductorCalculator:
 
         return conduct, dos, conduct_k, dos_k
 
-    def _process_energy(self, conduct, dos, conduct_k, dos_k, ie_g: int):
+    def process_energy(self, conduct, dos, conduct_k, dos_k, ie_g: int):
         nprint = self.data.iteration.nprint
         if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
             print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
 
-        gC_k, sgmL_k, sgmR_k = self._allocate_k_dependent()
+        gC_k, sgmL_k, sgmR_k = self.allocate_k_dependent()
         avg_iter = 0.0
 
         for ik in range(self.nkpts_par):
-            gC, sigma_L, sigma_R, niter_sum = self._process_kpoint(ie_g, ik)
+            gC, sigma_L, sigma_R, niter_sum = self.process_kpoint(ie_g, ik)
             avg_iter += niter_sum
 
-            self._accumulate_dos(dos, dos_k, gC, ie_g, ik)
-            self._accumulate_conductance(
+            self.accumulate_dos(dos, dos_k, gC, ie_g, ik)
+            self.accumulate_conductance(
                 conduct, conduct_k, gC, sigma_L, sigma_R, ie_g, ik
             )
 
@@ -121,10 +124,10 @@ class ConductorCalculator:
             if self.data.symmetry.write_lead_sgm:
                 sgmL_k[ik], sgmR_k[ik] = sigma_L, sigma_R
 
-        self._finalize_energy(avg_iter, ie_g, gC_k, sgmL_k, sgmR_k)
+        self.finalize_energy(avg_iter, ie_g, gC_k, sgmL_k, sgmR_k)
         return conduct, dos
 
-    def _allocate_k_dependent(self):
+    def allocate_k_dependent(self):
         gC_k = (
             np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
             if self.data.symmetry.write_gf
@@ -142,7 +145,7 @@ class ConductorCalculator:
         )
         return gC_k, sgmL_k, sgmR_k
 
-    def _process_kpoint(self, ie_g: int, ik: int):
+    def process_kpoint(self, ie_g: int, ik: int):
         hamiltonian_setup(
             ik=ik,
             ie_g=ie_g,
@@ -184,12 +187,12 @@ class ConductorCalculator:
         )
         return gC, sigma_L, sigma_R, niter_sum
 
-    def _accumulate_dos(self, dos, dos_k, gC, ie_g, ik):
+    def accumulate_dos(self, dos, dos_k, gC, ie_g, ik):
         diag_imag = np.imag(np.diagonal(gC))
         dos_k[ie_g, ik] = -self.wk_par[ik] * np.sum(diag_imag) / np.pi
         dos[ie_g] += dos_k[ie_g, ik]
 
-    def _accumulate_conductance(
+    def accumulate_conductance(
         self, conduct, conduct_k, gC, sigma_L, sigma_R, ie_g, ik
     ):
         gamma_L = 1j * (sigma_L - sigma_L.conj().T)
@@ -243,10 +246,9 @@ class ConductorCalculator:
             conduct[1 : 1 + nchan, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
             conduct_k[1 : 1 + nchan, ik, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
 
-    def _finalize_energy(self, avg_iter, ie_g, gC_k, sgmL_k, sgmR_k):
+    def finalize_energy(self, avg_iter, ie_g, gC_k, sgmL_k, sgmR_k):
         avg_iter /= 2 * self.nkpts_par
         if self.rank == 0:
-            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
             global_timing.timing_upto_now(
                 "do_conductor", label="Total time spent up to now"
             )
@@ -265,7 +267,7 @@ class ConductorCalculator:
                     self.vr_par3D[:, ir], sgmR_k, self.vkpt_par3D.T, self.wk_par
                 )
 
-    def _reduce_results(self, conduct, dos, conduct_k, dos_k):
+    def reduce_results(self, conduct, dos, conduct_k, dos_k):
         self.comm.Allreduce(MPI.IN_PLACE, conduct, op=MPI.SUM)
         self.comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
         self.comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
@@ -277,7 +279,7 @@ class ConductorCalculator:
             self.comm.Allreduce(MPI.IN_PLACE, self.rsgmL_out, op=MPI.SUM)
             self.comm.Allreduce(MPI.IN_PLACE, self.rsgmR_out, op=MPI.SUM)
 
-    def _write_results(self):
+    def write_operators(self):
         if self.rank != 0:
             return
 
@@ -315,7 +317,6 @@ class ConductorCalculator:
             )
             write_kresolved_operator_xml(
                 filename="lead_L_k.xml",
-                operator_k=None,  # handle passing k-dependent storage if needed
                 dimwann=self.dimC,
                 vkpt=self.vkpt_par3D,
             )
@@ -325,3 +326,31 @@ class ConductorCalculator:
 
     def get_k_resolved_dos(self, dos_k: np.ndarray) -> np.ndarray:
         return dos_k
+
+    def write_output(self, output_dir: Path, postfix: str):
+        if self.rank != 0:
+            return
+
+        write_data(self.egrid, self.conduct, "conductance", output_dir, postfix=postfix)
+        write_data(self.egrid, self.dos, "doscond", output_dir, postfix=postfix)
+
+        if self.data.symmetry.write_kdata:
+            nkpts_par = self.data.get_runtime_data().nkpts_par
+            prefix = os.path.basename(self.data.file_names.datafile_C)
+
+            for ik in range(nkpts_par):
+                ik_str = f"{ik + 1:04d}"
+                filename_cond = f"{prefix}_cond-{ik_str}.dat"
+                filename_dos = f"{prefix}_doscond-{ik_str}.dat"
+
+                with (output_dir / filename_cond).open("w") as f:
+                    for ie in range(self.egrid.shape[0]):
+                        values = " ".join(
+                            f"{self.conduct_k[ch, ik, ie]:15.9f}"
+                            for ch in range(self.conduct_k.shape[0])
+                        )
+                        f.write(f"{self.egrid[ie]:15.9f} {values}\n")
+
+                with (output_dir / filename_dos).open("w") as f:
+                    for ie in range(self.egrid.shape[0]):
+                        f.write(f"{self.egrid[ie]:15.9f} {self.dos_k[ie, ik]:15.9f}\n")
