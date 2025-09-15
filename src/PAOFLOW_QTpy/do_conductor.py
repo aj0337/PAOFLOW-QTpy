@@ -248,6 +248,7 @@ class ConductorCalculator:
     def finalize_energy(self, avg_iter, ie_g, gC_k, sgmL_k, sgmR_k):
         avg_iter /= 2 * self.nkpts_par
         if self.rank == 0:
+            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
             global_timing.timing_upto_now(
                 "do_conductor", label="Total time spent up to now"
             )
