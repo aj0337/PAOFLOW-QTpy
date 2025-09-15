@@ -1,12 +1,13 @@
 import logging
 from typing import Tuple
 import numpy as np
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+@timed_function("transfer")
 def compute_surface_transfer_matrices(
     h_eff: np.ndarray,
     s_eff: np.ndarray,
@@ -85,17 +86,46 @@ def compute_surface_transfer_matrices(
 
     Convergence is checked using the Frobenius norms of Tₘ₊₁ and Tₘ₊₁†.
     """
-    global_timing.start("transfer")
+    ndim = h_eff.shape[0]
+    A = h_eff + 1j * delta * s_eff
     try:
-        ndim = h_eff.shape[0]
-        A = h_eff + 1j * delta * s_eff
-        try:
-            t11 = np.linalg.solve(A, np.eye(ndim))
-            t11 = t11.T
+        t11 = np.linalg.solve(A, np.eye(ndim))
+        t11 = t11.T
 
+    except np.linalg.LinAlgError:
+        if verbose:
+            logger.warning("Initial inversion failed: singular matrix.")
+        if fail_counter is not None:
+            fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
+            if fail_counter["nfail"] > fail_limit:
+                raise RuntimeError("Too many failures in transfer matrix convergence.")
+        return (
+            np.zeros((ndim, ndim), dtype=np.complex128),
+            np.zeros((ndim, ndim), dtype=np.complex128),
+            0,
+        )
+
+    tau = t11 @ t_coupling.T.conj()
+    taut = t11 @ t_coupling
+
+    tot = tau.copy()
+    tott = taut.copy()
+    tsum = taut.copy()
+    tsumt = tau.copy()
+
+    for m in range(1, niterx + 1):
+        t11 = tau @ taut
+        t12 = taut @ tau
+        s1 = -(t11 + t12)
+        np.fill_diagonal(s1, 1.0 + np.diag(s1))
+
+        try:
+            s2 = np.linalg.solve(s1, np.eye(ndim))
         except np.linalg.LinAlgError:
             if verbose:
-                logger.warning("Initial inversion failed: singular matrix.")
+                logger.warning(
+                    f"Singular matrix at iteration {m}; discarding energy point."
+                )
             if fail_counter is not None:
                 fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
                 if fail_counter["nfail"] > fail_limit:
@@ -105,75 +135,38 @@ def compute_surface_transfer_matrices(
             return (
                 np.zeros((ndim, ndim), dtype=np.complex128),
                 np.zeros((ndim, ndim), dtype=np.complex128),
-                0,
+                m,
             )
 
-        tau = t11 @ t_coupling.T.conj()
-        taut = t11 @ t_coupling
+        t11 = tau @ tau
+        t12 = taut @ taut
+        tau_next = s2 @ t11
+        taut_next = s2 @ t12
 
-        tot = tau.copy()
-        tott = taut.copy()
-        tsum = taut.copy()
-        tsumt = tau.copy()
+        tot += tsum @ tau_next
+        tsum = tsum @ taut_next
 
-        for m in range(1, niterx + 1):
-            t11 = tau @ taut
-            t12 = taut @ tau
-            s1 = -(t11 + t12)
-            np.fill_diagonal(s1, 1.0 + np.diag(s1))
+        tott += tsumt @ taut_next
+        tsumt = tsumt @ tau_next
 
-            try:
-                s2 = np.linalg.solve(s1, np.eye(ndim))
-            except np.linalg.LinAlgError:
-                if verbose:
-                    logger.warning(
-                        f"Singular matrix at iteration {m}; discarding energy point."
-                    )
-                if fail_counter is not None:
-                    fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
-                    if fail_counter["nfail"] > fail_limit:
-                        raise RuntimeError(
-                            "Too many failures in transfer matrix convergence."
-                        )
-                return (
-                    np.zeros((ndim, ndim), dtype=np.complex128),
-                    np.zeros((ndim, ndim), dtype=np.complex128),
-                    m,
-                )
+        tau = tau_next
+        taut = taut_next
 
-            t11 = tau @ tau
-            t12 = taut @ taut
-            tau_next = s2 @ t11
-            taut_next = s2 @ t12
+        conver = np.sum(np.abs(tau) ** 2).real
+        conver2 = np.sum(np.abs(taut) ** 2).real
+        if conver < transfer_thr and conver2 < transfer_thr:
+            if verbose:
+                logger.info(f"Transfer matrix converged after {m} iterations.")
+            return tot, tott, m
 
-            tot += tsum @ tau_next
-            tsum = tsum @ taut_next
-
-            tott += tsumt @ taut_next
-            tsumt = tsumt @ tau_next
-
-            tau = tau_next
-            taut = taut_next
-
-            conver = np.sum(np.abs(tau) ** 2).real
-            conver2 = np.sum(np.abs(taut) ** 2).real
-            if conver < transfer_thr and conver2 < transfer_thr:
-                if verbose:
-                    logger.info(f"Transfer matrix converged after {m} iterations.")
-                return tot, tott, m
-
-        if verbose:
-            logger.warning(
-                f"Transfer matrix did not converge after {niterx} iterations."
-            )
-        if fail_counter is not None:
-            fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
-            if fail_counter["nfail"] > fail_limit:
-                raise RuntimeError("Too many failures in transfer matrix convergence.")
-        return (
-            np.zeros((ndim, ndim), dtype=np.complex128),
-            np.zeros((ndim, ndim), dtype=np.complex128),
-            niterx,
-        )
-    finally:
-        global_timing.stop("transfer")
+    if verbose:
+        logger.warning(f"Transfer matrix did not converge after {niterx} iterations.")
+    if fail_counter is not None:
+        fail_counter["nfail"] = fail_counter.get("nfail", 0) + 1
+        if fail_counter["nfail"] > fail_limit:
+            raise RuntimeError("Too many failures in transfer matrix convergence.")
+    return (
+        np.zeros((ndim, ndim), dtype=np.complex128),
+        np.zeros((ndim, ndim), dtype=np.complex128),
+        niterx,
+    )

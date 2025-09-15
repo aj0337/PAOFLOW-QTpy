@@ -1,7 +1,8 @@
 import numpy as np
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("compute_rham")
 def compute_rham(
     rvec: np.ndarray,
     Hk: np.ndarray,
@@ -45,7 +46,6 @@ def compute_rham(
     boundary conditions and correctly maps between reciprocal and real-space
     representations of the Hamiltonian.
     """
-    global_timing.start("compute_rham")
 
     nkpts, n, _ = Hk.shape
     Hr = np.zeros((n, n), dtype=np.complex128)
@@ -59,5 +59,4 @@ def compute_rham(
             for i in range(n):
                 Hr[i, j] += weight * Hk[ik, i, j]
 
-    global_timing.stop("compute_rham")
     return Hr

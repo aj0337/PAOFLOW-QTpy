@@ -5,8 +5,10 @@ from typing import Literal
 
 from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
 from PAOFLOW_QTpy.parsers.read_matrix import read_matrix
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("hamiltonian_init")
 def initialize_hamiltonian_blocks(
     ham_system: HamiltonianSystem,
     ivr_par3D: np.ndarray,

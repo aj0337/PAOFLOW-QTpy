@@ -3,9 +3,10 @@ from typing import Literal, Optional
 import numpy as np
 from PAOFLOW_QTpy.gzero_maker import compute_non_interacting_gf
 from PAOFLOW_QTpy.operator_blc import OperatorBlockView
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("green")
 def compute_surface_green_function(
     h_eff: np.ndarray,
     s_eff: np.ndarray,
@@ -53,7 +54,6 @@ def compute_surface_green_function(
     `T` and `T†` are constructed iteratively to capture surface coupling.
 
     """
-    global_timing.start("green")
     z_shift = 1j * delta * s_eff
     A = h_eff + z_shift
 
@@ -74,7 +74,6 @@ def compute_surface_green_function(
             "Green's function inversion failed due to singular matrix."
         ) from e
 
-    global_timing.stop("green")
     return g
 
 

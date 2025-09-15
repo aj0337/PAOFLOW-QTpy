@@ -3,9 +3,10 @@ from numpy.linalg import eigh
 from scipy.linalg import solve
 from typing import Literal
 
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("transmittance")
 def evaluate_transmittance(
     gamma_L: np.ndarray,
     gamma_R: np.ndarray,
@@ -71,61 +72,56 @@ def evaluate_transmittance(
         if any eigenvalue is found to be significantly negative (< -1e-6).
     """
 
-    global_timing.start("transmittance")
-    try:
-        assert gamma_L.shape == gamma_R.shape == G_ret.shape
-        dim = gamma_L.shape[0]
+    assert gamma_L.shape == gamma_R.shape == G_ret.shape
+    dim = gamma_L.shape[0]
 
-        G_adv = G_ret.conj().T
-        work = gamma_L @ G_ret
+    G_adv = G_ret.conj().T
+    work = gamma_L @ G_ret
 
-        if do_eigenchannels:
-            A_L = G_adv @ work  # G^a Gamma_L G^r
-        else:
-            work = G_adv @ work
+    if do_eigenchannels:
+        A_L = G_adv @ work  # G^a Gamma_L G^r
+    else:
+        work = G_adv @ work
 
+    if formula == "generalized":
+        assert (
+            sgm_corr is not None
+        ), "Correlation self-energy must be provided for generalized formula."
+        lambda_corr = 1j * (sgm_corr - sgm_corr.conj().T)
+        regularized = gamma_L + gamma_R + 2 * eta * np.eye(dim)
+        lambda_mat = solve(regularized, lambda_corr)
+        lambda_mat += np.eye(dim)
+    else:
+        lambda_mat = np.eye(dim)
+
+    if not do_eigenchannels:
+        Tmat = work @ gamma_R
         if formula == "generalized":
-            assert (
-                sgm_corr is not None
-            ), "Correlation self-energy must be provided for generalized formula."
-            lambda_corr = 1j * (sgm_corr - sgm_corr.conj().T)
-            regularized = gamma_L + gamma_R + 2 * eta * np.eye(dim)
-            lambda_mat = solve(regularized, lambda_corr)
-            lambda_mat += np.eye(dim)
+            Tmat = Tmat @ lambda_mat
+        conduct = np.real(np.diag(Tmat))
+        return conduct, None
+
+    elif do_eigenchannels and not do_eigplot:
+        Tmat = gamma_R @ A_L
+        if S_overlap is not None:
+            evals, _ = eigh(Tmat @ lambda_mat, S_overlap)
         else:
-            lambda_mat = np.eye(dim)
+            evals, _ = eigh(Tmat @ lambda_mat)
+        conduct = np.real(np.sort(evals))
+        return conduct, None
 
-        if not do_eigenchannels:
-            Tmat = work @ gamma_R
-            if formula == "generalized":
-                Tmat = Tmat @ lambda_mat
-            conduct = np.real(np.diag(Tmat))
-            return conduct, None
+    elif do_eigenchannels and do_eigplot:
+        evals, vecs = eigh(A_L, S_overlap) if S_overlap is not None else eigh(A_L)
+        if np.any(evals < -1e-6):
+            raise ValueError(
+                "A_L is not positive semi-definite; encountered eigenvalues < -1e-6."
+            )
+        evals = np.where(evals < 0.0, 0.0, evals)
+        sqrt_A_L = vecs @ np.diag(np.sqrt(evals)) @ vecs.conj().T
+        Tmat = sqrt_A_L @ gamma_R @ sqrt_A_L
+        evals, vecs = eigh(Tmat, S_overlap) if S_overlap is not None else eigh(Tmat)
+        conduct = np.real(np.sort(evals))
+        return conduct, vecs
 
-        elif do_eigenchannels and not do_eigplot:
-            Tmat = gamma_R @ A_L
-            if S_overlap is not None:
-                evals, _ = eigh(Tmat @ lambda_mat, S_overlap)
-            else:
-                evals, _ = eigh(Tmat @ lambda_mat)
-            conduct = np.real(np.sort(evals))
-            return conduct, None
-
-        elif do_eigenchannels and do_eigplot:
-            evals, vecs = eigh(A_L, S_overlap) if S_overlap is not None else eigh(A_L)
-            if np.any(evals < -1e-6):
-                raise ValueError(
-                    "A_L is not positive semi-definite; encountered eigenvalues < -1e-6."
-                )
-            evals = np.where(evals < 0.0, 0.0, evals)
-            sqrt_A_L = vecs @ np.diag(np.sqrt(evals)) @ vecs.conj().T
-            Tmat = sqrt_A_L @ gamma_R @ sqrt_A_L
-            evals, vecs = eigh(Tmat, S_overlap) if S_overlap is not None else eigh(Tmat)
-            conduct = np.real(np.sort(evals))
-            return conduct, vecs
-
-        else:
-            raise ValueError("Unexpected combination of eigenchannel flags.")
-
-    finally:
-        global_timing.stop("transmittance")
+    else:
+        raise ValueError("Unexpected combination of eigenchannel flags.")

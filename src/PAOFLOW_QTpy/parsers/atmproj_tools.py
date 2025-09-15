@@ -11,7 +11,10 @@ from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
 from PAOFLOW_QTpy.io.log_module import log_rank0
 from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
 
+from PAOFLOW_QTpy.utils.timing import timed_function
 
+
+@timed_function("atmproj_to_internal")
 def parse_atomic_proj(
     *,
     input_dict: Optional[Dict] = None,

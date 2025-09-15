@@ -1,7 +1,8 @@
 import numpy as np
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("fourier_par")
 def fourier_transform_real_to_kspace(
     rh: np.ndarray,
     wr: np.ndarray,
@@ -32,7 +33,6 @@ def fourier_transform_real_to_kspace(
 
     for each orbital pair `(i, j)` and k-point index `k`.
     """
-    global_timing.start("fourier_par")
     dim1, dim2, nR = rh.shape
     _, nk = table.shape
     kh = np.zeros((dim1, dim2, nk), dtype=np.complex128)
@@ -41,5 +41,4 @@ def fourier_transform_real_to_kspace(
         for R in range(nR):
             kh[:, :, k] += wr[R] * table[R, k] * rh[:, :, R]
 
-    global_timing.stop("fourier_par")
     return kh

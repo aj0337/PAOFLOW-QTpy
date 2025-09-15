@@ -1,6 +1,8 @@
 import numpy as np
 from typing import Optional, Callable, Tuple
 
+from PAOFLOW_QTpy.utils.timing import timed_function
+
 
 def initialize_smearing_grid(
     smearing_type: str = "lorentzian",
@@ -108,6 +110,7 @@ class SmearingData:
         self.g_smear: Optional[np.ndarray] = None
         self.smearing_func = smearing_func
 
+    @timed_function("smearing_init")
     def initialize(
         self,
         smearing_type: str = "lorentzian",

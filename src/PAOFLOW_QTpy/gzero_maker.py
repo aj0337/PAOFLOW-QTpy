@@ -1,9 +1,10 @@
 import numpy as np
 from typing import Optional, Literal
 from PAOFLOW_QTpy.operator_blc import OperatorBlockView
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import timed_function
 
 
+@timed_function("gzero_maker")
 def compute_non_interacting_gf(
     blc_00C: OperatorBlockView,
     smearing_type: str = "lorentzian",
@@ -51,51 +52,46 @@ def compute_non_interacting_gf(
 
     Smearing ensures convergence and causality in retarded Green's functions.
     """
-    global_timing.start("gzero_maker")
-    try:
-        if smearing_type in ("lorentzian", "none"):
-            delta_eff = delta if smearing_type == "lorentzian" else delta * delta_ratio
-            A = blc_00C.aux + 1j * delta_eff * blc_00C.S
-            gzero = np.linalg.inv(A) if calc == "direct" else A
+    if smearing_type in ("lorentzian", "none"):
+        delta_eff = delta if smearing_type == "lorentzian" else delta * delta_ratio
+        A = blc_00C.aux + 1j * delta_eff * blc_00C.S
+        gzero = np.linalg.inv(A) if calc == "direct" else A
 
-        elif smearing_type == "numerical":
-            A = blc_00C.aux
+    elif smearing_type == "numerical":
+        A = blc_00C.aux
 
-            if g_smear is None or xgrid is None:
-                raise ValueError("Numerical smearing requires `g_smear` and `xgrid`.")
+        if g_smear is None or xgrid is None:
+            raise ValueError("Numerical smearing requires `g_smear` and `xgrid`.")
 
-            if not np.allclose(A, A.conj().T, atol=1e-8):
-                raise ValueError(
-                    "Matrix A is not Hermitian; numerical smearing requires Hermitian matrix."
+        if not np.allclose(A, A.conj().T, atol=1e-8):
+            raise ValueError(
+                "Matrix A is not Hermitian; numerical smearing requires Hermitian matrix."
+            )
+
+        eigvals, eigvecs = np.linalg.eigh(A)
+        scaled = eigvals / delta
+
+        interpolated = np.empty_like(scaled, dtype=np.complex128)
+        for i, x in enumerate(scaled):
+            if x < xgrid[0] or x > xgrid[-1]:
+                interpolated[i] = (
+                    1 / (delta * (x + 1j)) if calc == "direct" else x * delta
                 )
-
-            eigvals, eigvecs = np.linalg.eigh(A)
-            scaled = eigvals / delta
-
-            interpolated = np.empty_like(scaled, dtype=np.complex128)
-            for i, x in enumerate(scaled):
-                if x < xgrid[0] or x > xgrid[-1]:
-                    interpolated[i] = (
-                        1 / (delta * (x + 1j)) if calc == "direct" else x * delta
-                    )
+            else:
+                idx = np.searchsorted(xgrid, x) - 1
+                dx = xgrid[idx + 1] - xgrid[idx]
+                alpha = (x - xgrid[idx]) / dx if dx != 0 else 0.0
+                f1, f2 = g_smear[idx], g_smear[idx + 1]
+                if calc == "direct":
+                    interpolated[i] = (1 - alpha) * f1 + alpha * f2
                 else:
-                    idx = np.searchsorted(xgrid, x) - 1
-                    dx = xgrid[idx + 1] - xgrid[idx]
-                    alpha = (x - xgrid[idx]) / dx if dx != 0 else 0.0
-                    f1, f2 = g_smear[idx], g_smear[idx + 1]
-                    if calc == "direct":
-                        interpolated[i] = (1 - alpha) * f1 + alpha * f2
-                    else:
-                        f1_inv = 1.0 / f1
-                        f2_inv = 1.0 / f2
-                        interpolated[i] = (1 - alpha) * f1_inv + alpha * f2_inv
+                    f1_inv = 1.0 / f1
+                    f2_inv = 1.0 / f2
+                    interpolated[i] = (1 - alpha) * f1_inv + alpha * f2_inv
 
-            gzero = eigvecs @ np.diag(interpolated) @ eigvecs.conj().T
+        gzero = eigvecs @ np.diag(interpolated) @ eigvecs.conj().T
 
-        else:
-            raise ValueError(f"Unsupported smearing_type: {smearing_type}")
+    else:
+        raise ValueError(f"Unsupported smearing_type: {smearing_type}")
 
-        return gzero
-
-    finally:
-        global_timing.stop("gzero_maker")
+    return gzero

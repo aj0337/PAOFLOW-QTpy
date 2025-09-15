@@ -16,7 +16,7 @@ from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
 from PAOFLOW_QTpy.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
 from PAOFLOW_QTpy.io.write_data import write_data
@@ -54,6 +54,7 @@ class ConductorCalculator:
         self.vr_par3D = 2 * np.pi * self.ivr_par3D.astype(np.float64)
         self.nrtot_par = int(self.runtime.nrtot_par)
 
+    @timed_function("do_conductor")
     def run(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self.conduct, self.dos, self.conduct_k, self.dos_k = self.initialize_outputs()
         ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)

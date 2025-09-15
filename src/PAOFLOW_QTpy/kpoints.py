@@ -1,6 +1,8 @@
 import numpy as np
 from typing import Tuple, Optional, Union
 
+from PAOFLOW_QTpy.utils.timing import timed_function
+
 
 def kpoints_mask(
     vect: Union[Tuple[int, int], np.ndarray],
@@ -240,6 +242,7 @@ def initialize_kpoints(
     return vkpt_par3D, wk_par
 
 
+@timed_function("cft_1z")
 def compute_fourier_phase_table(
     vkpts: np.ndarray,
     ivr_par: np.ndarray,

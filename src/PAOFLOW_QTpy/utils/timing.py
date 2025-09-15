@@ -43,7 +43,7 @@ class Clock:
         Start the timer. Raises an error if already started.
         """
         if self._start_time is not None:
-            raise RuntimeError(f"Clock '{self.name}' is already running.")
+            raise RuntimeError(f"Clock {self.name} is already running.")
         self._start_time = perf_counter()
         self.call_count += 1
 
@@ -53,7 +53,7 @@ class Clock:
         Raises an error if the timer was never started.
         """
         if self._start_time is None:
-            raise RuntimeError(f"Clock '{self.name}' was not started.")
+            raise RuntimeError(f"Clock {self.name} was not started.")
         elapsed = perf_counter() - self._start_time
         self.total_time += elapsed
         self._start_time = None
@@ -180,3 +180,27 @@ class TimingManager:
 
 
 global_timing = TimingManager()
+
+
+def timed_function(name: str = None):
+    """
+    Decorator to automatically time a function using global_timing.
+
+    Parameters
+    ----------
+    name : str, optional
+        Custom name for the timer. If None, the function's __name__ is used.
+    """
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            timer_name = name or func.__name__
+            global_timing.start(timer_name)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                global_timing.stop(timer_name)
+
+        return wrapper
+
+    return decorator

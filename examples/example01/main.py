@@ -29,7 +29,7 @@ from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
 from PAOFLOW_QTpy.workspace import Workspace
-from PAOFLOW_QTpy.utils.timing import global_timing
+from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 
 comm = MPI.COMM_WORLD
 
@@ -42,9 +42,8 @@ def parse_args():
     return sys.argv[1]
 
 
+@timed_function("conductor")
 def main():
-    global_timing.start("conductor")
-
     yaml_file = parse_args()
     data = load_conductor_data_from_yaml(yaml_file)
 
@@ -59,7 +58,6 @@ def main():
     startup("conductor.py")
     write_header("Conductor Initialization")
 
-    global_timing.start("atmproj_to_internal")
     hk_data = parse_atomic_proj(
         file_proj=data.file_names.datafile_C,
         work_dir=work_dir,
@@ -69,7 +67,6 @@ def main():
         do_orthoovp=do_orthoovp,
         write_intermediate=True,
     )
-    global_timing.stop("atmproj_to_internal")
 
     nk_par, nr_par = initialize_meshsize(
         nr_full=hk_data["nr"], transport_dir=data.transport_dir
@@ -111,9 +108,7 @@ def main():
     memory_tracker = MemoryTracker()
 
     smearing_data = SmearingData(smearing_func=smearing_func)
-    global_timing.start("smearing_init")
     smearing_data.initialize()
-    global_timing.stop("smearing_init")
     memory_tracker.register_section(
         "smearing", smearing_data.memory_usage, is_allocated=True
     )
@@ -142,11 +137,8 @@ def main():
         is_allocated=ham_sys.allocated,
     )
 
-    global_timing.start("cft_1z")
     table_par = compute_fourier_phase_table(vkpts=vkpt_par3D, ivr_par=ivr_par3D)
-    global_timing.stop("cft_1z")
 
-    global_timing.start("hamiltonian_init")
     initialize_hamiltonian_blocks(
         ham_system=ham_sys,
         ivr_par3D=ivr_par3D.T,
@@ -159,7 +151,6 @@ def main():
         transport_dir=data.transport_dir,
         calculation_type=calculation_type,
     )
-    global_timing.stop("hamiltonian_init")
 
     data.advanced.leads_are_identical = check_leads_are_identical(
         ham_system=ham_sys,
@@ -190,7 +181,6 @@ def main():
 
     data._freqloop_start_time = perf_counter()
 
-    global_timing.start("do_conductor")
     egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
     calculator = ConductorCalculator(
         data=data,
@@ -201,16 +191,14 @@ def main():
     )
     calculator.run()
 
-    global_timing.stop("do_conductor")
-
     write_header("Writing data")
 
     if comm.rank == 0:
         output_dir = Path("output")
         calculator.write_output(output_dir, postfix=data.file_names.postfix)
 
-    global_timing.stop("conductor")
-    global_timing.report()
+    if comm.rank == 0:
+        global_timing.report()
 
 
 if __name__ == "__main__":
