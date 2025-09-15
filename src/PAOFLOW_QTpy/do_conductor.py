@@ -20,233 +20,308 @@ from PAOFLOW_QTpy.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
 
 
-def run_conductor(
-    data: ConductorData,
-    *,
-    blc_blocks: dict,
-    egrid: npt.NDArray[np.float64],
-    wk_par: npt.NDArray[np.float64],
-    vkpt_par3D: npt.NDArray[np.float64],
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+class ConductorCalculator:
+    def __init__(
+        self,
+        data: ConductorData,
+        *,
+        blc_blocks: dict,
+        egrid: npt.NDArray[np.float64],
+        wk_par: npt.NDArray[np.float64],
+        vkpt_par3D: npt.NDArray[np.float64],
+    ):
+        self.data = data
+        self.blc_blocks = blc_blocks
+        self.egrid = egrid
+        self.wk_par = wk_par
+        self.vkpt_par3D = vkpt_par3D
 
-    runtime = data.get_runtime_data()
-    dimC = data.dimC
-    dimR = data.dimR
-    dimL = data.dimL
-    ne = data.energy.ne
-    delta = data.energy.delta
-    conduct_formula = data.conduct_formula
-    write_gf = data.symmetry.write_gf
-    write_lead_sgm = data.symmetry.write_lead_sgm
-    do_eigenchannels = data.symmetry.do_eigenchannels
-    neigchnx = data.symmetry.neigchnx
-    do_eigplot = data.symmetry.do_eigplot
-    ie_eigplot = data.symmetry.ie_eigplot
-    ik_eigplot = data.symmetry.ik_eigplot
-    leads_are_identical = data.advanced.leads_are_identical
-    surface = data.advanced.surface
-    niterx = data.iteration.niterx
-    transfer_thr = data.iteration.transfer_thr
-    nprint = data.iteration.nprint
+        self.comm = MPI.COMM_WORLD
+        self.rank = self.comm.Get_rank()
+        self.size = self.comm.Get_size()
 
-    ivr_par3D = runtime.ivr_par3D
-    vr_par3D = 2 * np.pi * ivr_par3D.astype(np.float64)
-    nrtot_par = int(runtime.nrtot_par)
-    nkpts_par = int(runtime.nkpts_par)
+        self.runtime = data.get_runtime_data()
+        self.dimC = data.dimC
+        self.dimR = data.dimR
+        self.dimL = data.dimL
+        self.ne = data.energy.ne
+        self.delta = data.energy.delta
+        self.nkpts_par = int(self.runtime.nkpts_par)
 
-    neigchn = min(dimC, dimR, dimL, neigchnx) if do_eigenchannels else 0
-    conduct = np.zeros((1 + neigchn, ne), dtype=np.float64)
-    conduct_k = np.zeros((1 + neigchn, nkpts_par, ne), dtype=np.float64)
-    dos = np.zeros(ne, dtype=np.float64)
-    dos_k = np.zeros((ne, nkpts_par), dtype=np.float64)
+        self.ivr_par3D = self.runtime.ivr_par3D
+        self.vr_par3D = 2 * np.pi * self.ivr_par3D.astype(np.float64)
+        self.nrtot_par = int(self.runtime.nrtot_par)
 
-    gf_out = (
-        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128) if write_gf else None
-    )
-    rsgmL_out = (
-        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128)
-        if write_lead_sgm
-        else None
-    )
-    rsgmR_out = (
-        np.zeros((ne, nrtot_par, dimC, dimC), dtype=np.complex128)
-        if write_lead_sgm
-        else None
-    )
+    def run(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        conduct, dos, conduct_k, dos_k = self._initialize_outputs()
 
-    ie_start, ie_end = divide_work(0, ne - 1, rank, size)
+        ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
+        for ie_g in range(ie_start, ie_end + 1):
+            conduct, dos = self._process_energy(conduct, dos, conduct_k, dos_k, ie_g)
 
-    for ie_g in range(ie_start, ie_end + 1):
+        self._reduce_results(conduct, dos, conduct_k, dos_k)
+        self._write_results()
+        return conduct, dos, conduct_k, dos_k
+
+    def _initialize_outputs(self):
+        do_eigenchannels = self.data.symmetry.do_eigenchannels
+        neigchnx = self.data.symmetry.neigchnx
+        neigchn = (
+            min(self.dimC, self.dimR, self.dimL, neigchnx) if do_eigenchannels else 0
+        )
+
+        conduct = np.zeros((1 + neigchn, self.ne), dtype=np.float64)
+        conduct_k = np.zeros((1 + neigchn, self.nkpts_par, self.ne), dtype=np.float64)
+        dos = np.zeros(self.ne, dtype=np.float64)
+        dos_k = np.zeros((self.ne, self.nkpts_par), dtype=np.float64)
+
+        self.gf_out = (
+            np.zeros(
+                (self.ne, self.nrtot_par, self.dimC, self.dimC), dtype=np.complex128
+            )
+            if self.data.symmetry.write_gf
+            else None
+        )
+        self.rsgmL_out = (
+            np.zeros(
+                (self.ne, self.nrtot_par, self.dimC, self.dimC), dtype=np.complex128
+            )
+            if self.data.symmetry.write_lead_sgm
+            else None
+        )
+        self.rsgmR_out = (
+            np.zeros(
+                (self.ne, self.nrtot_par, self.dimC, self.dimC), dtype=np.complex128
+            )
+            if self.data.symmetry.write_lead_sgm
+            else None
+        )
+
+        return conduct, dos, conduct_k, dos_k
+
+    def _process_energy(self, conduct, dos, conduct_k, dos_k, ie_g: int):
+        nprint = self.data.iteration.nprint
+        if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
+            print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
+
+        gC_k, sgmL_k, sgmR_k = self._allocate_k_dependent()
         avg_iter = 0.0
 
-        if (ie_g % nprint == 0 or ie_g == ie_start or ie_g == ie_end) and rank == 0:
-            print(f"  Computing E({ie_g:6d}) = {egrid[ie_g]:12.5f} eV")
+        for ik in range(self.nkpts_par):
+            gC, sigma_L, sigma_R, niter_sum = self._process_kpoint(ie_g, ik)
+            avg_iter += niter_sum
 
+            self._accumulate_dos(dos, dos_k, gC, ie_g, ik)
+            self._accumulate_conductance(
+                conduct, conduct_k, gC, sigma_L, sigma_R, ie_g, ik
+            )
+
+            if self.data.symmetry.write_gf:
+                gC_k[ik] = gC
+            if self.data.symmetry.write_lead_sgm:
+                sgmL_k[ik], sgmR_k[ik] = sigma_L, sigma_R
+
+        self._finalize_energy(avg_iter, ie_g, gC_k, sgmL_k, sgmR_k)
+        return conduct, dos
+
+    def _allocate_k_dependent(self):
         gC_k = (
-            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128) if write_gf else None
+            np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
+            if self.data.symmetry.write_gf
+            else None
         )
         sgmL_k = (
-            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128)
-            if write_lead_sgm
+            np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
+            if self.data.symmetry.write_lead_sgm
             else None
         )
         sgmR_k = (
-            np.zeros((nkpts_par, dimC, dimC), dtype=np.complex128)
-            if write_lead_sgm
+            np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
+            if self.data.symmetry.write_lead_sgm
             else None
         )
+        return gC_k, sgmL_k, sgmR_k
 
-        for ik in range(nkpts_par):
-            hamiltonian_setup(
+    def _process_kpoint(self, ie_g: int, ik: int):
+        hamiltonian_setup(
+            ik=ik,
+            ie_g=ie_g,
+            egrid=self.egrid,
+            shift_L=self.data.shift_L,
+            shift_C=self.data.shift_C,
+            shift_R=self.data.shift_R,
+            shift_C_corr=getattr(self.data, "shift_corr", 0.0),
+            blc_blocks=self.blc_blocks,
+            ie_buff=1,
+        )
+
+        sigma_R, sigma_L, niter_R, niter_L = build_self_energies_from_blocks(
+            blc_00R=self.blc_blocks["blc_00R"].at_k(ik),
+            blc_01R=self.blc_blocks["blc_01R"].at_k(ik),
+            blc_00L=self.blc_blocks["blc_00L"].at_k(ik),
+            blc_01L=self.blc_blocks["blc_01L"].at_k(ik),
+            blc_CR=self.blc_blocks["blc_CR"].at_k(ik),
+            blc_LC=self.blc_blocks["blc_LC"].at_k(ik),
+            leads_are_identical=self.data.advanced.leads_are_identical,
+            delta=self.delta,
+            niterx=self.data.iteration.niterx,
+            transfer_thr=self.data.iteration.transfer_thr,
+            fail_counter=None,
+            fail_limit=self.data.iteration.nfailx,
+            verbose=False,
+        )
+
+        gC = compute_conductor_green_function(
+            blc_00C=self.blc_blocks["blc_00C"].at_k(ik),
+            sigma_l=sigma_L,
+            sigma_r=sigma_R if not self.data.advanced.surface else None,
+            delta=self.delta,
+            surface=self.data.advanced.surface,
+        )
+
+        niter_sum = niter_R + (
+            niter_L if not self.data.advanced.leads_are_identical else 0
+        )
+        return gC, sigma_L, sigma_R, niter_sum
+
+    def _accumulate_dos(self, dos, dos_k, gC, ie_g, ik):
+        diag_imag = np.imag(np.diagonal(gC))
+        dos_k[ie_g, ik] = -self.wk_par[ik] * np.sum(diag_imag) / np.pi
+        dos[ie_g] += dos_k[ie_g, ik]
+
+    def _accumulate_conductance(
+        self, conduct, conduct_k, gC, sigma_L, sigma_R, ie_g, ik
+    ):
+        gamma_L = 1j * (sigma_L - sigma_L.conj().T)
+        gamma_R = 1j * (sigma_R - sigma_R.conj().T)
+
+        do_eigplot_now = (
+            self.data.symmetry.do_eigenchannels
+            and self.data.symmetry.do_eigplot
+            and ie_g == self.data.symmetry.ie_eigplot
+            and ik == self.data.symmetry.ik_eigplot
+        )
+
+        cond_aux, z_eigplot = evaluate_transmittance(
+            gamma_L=gamma_L,
+            gamma_R=gamma_R,
+            G_ret=gC,
+            formula=self.data.conduct_formula,
+            do_eigenchannels=self.data.symmetry.do_eigenchannels,
+            do_eigplot=do_eigplot_now,
+            sgm_corr=None,
+            eta=self.delta,
+            S_overlap=None,
+        )
+
+        conduct[0, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
+        conduct_k[0, ik, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
+
+        if self.data.symmetry.do_eigenchannels:
+            nchan = min(conduct.shape[0] - 1, cond_aux.shape[0])
+            conduct[1 : 1 + nchan, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
+            conduct_k[1 : 1 + nchan, ik, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
+
+        if do_eigplot_now and z_eigplot is not None and self.rank == 0:
+            write_eigenchannels(
+                data=z_eigplot,
+                ie=ie_g,
                 ik=ik,
-                ie_g=ie_g,
-                egrid=egrid,
-                shift_L=data.shift_L,
-                shift_C=data.shift_C,
-                shift_R=data.shift_R,
-                shift_C_corr=getattr(data, "shift_corr", 0.0),
-                blc_blocks=blc_blocks,
-                ie_buff=1,
+                vkpt=self.vkpt_par3D[:, ik],
+                transport_dir=self.data.transport_dir,
+                output_dir=Path("output/eigenchannels"),
+                prefix="eigchn",
+                overwrite=True,
+                verbose=True,
             )
 
-            sigma_R, sigma_L, niter_R, niter_L = build_self_energies_from_blocks(
-                blc_00R=blc_blocks["blc_00R"].at_k(ik),
-                blc_01R=blc_blocks["blc_01R"].at_k(ik),
-                blc_00L=blc_blocks["blc_00L"].at_k(ik),
-                blc_01L=blc_blocks["blc_01L"].at_k(ik),
-                blc_CR=blc_blocks["blc_CR"].at_k(ik),
-                blc_LC=blc_blocks["blc_LC"].at_k(ik),
-                leads_are_identical=leads_are_identical,
-                delta=delta,
-                niterx=niterx,
-                transfer_thr=transfer_thr,
-                fail_counter=None,
-                fail_limit=data.iteration.nfailx,
-                verbose=False,
-            )
+        conduct[0, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
+        conduct_k[0, ik, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
 
-            avg_iter += niter_R + (niter_L if not leads_are_identical else 0)
+        if self.data.symmetry.do_eigenchannels:
+            nchan = min(conduct.shape[0] - 1, cond_aux.shape[0])
+            conduct[1 : 1 + nchan, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
+            conduct_k[1 : 1 + nchan, ik, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
 
-            gC = compute_conductor_green_function(
-                blc_00C=blc_blocks["blc_00C"].at_k(ik),
-                sigma_l=sigma_L,
-                sigma_r=sigma_R if not surface else None,
-                delta=delta,
-                surface=surface,
-            )
-
-            diag_imag = np.imag(np.diagonal(gC))
-            dos_k[ie_g, ik] = -wk_par[ik] * np.sum(diag_imag) / np.pi
-            dos[ie_g] += dos_k[ie_g, ik]
-
-            if write_gf:
-                gC_k[ik] = gC
-            if write_lead_sgm:
-                sgmL_k[ik] = sigma_L
-                sgmR_k[ik] = sigma_R
-
-            gamma_L = 1j * (sigma_L - sigma_L.conj().T)
-            gamma_R = 1j * (sigma_R - sigma_R.conj().T)
-
-            cond_aux, z_eigplot = evaluate_transmittance(
-                gamma_L=gamma_L,
-                gamma_R=gamma_R,
-                G_ret=gC,
-                formula=conduct_formula,
-                do_eigenchannels=do_eigenchannels,
-                do_eigplot=(
-                    do_eigenchannels
-                    and do_eigplot
-                    and ie_g == ie_eigplot
-                    and ik == ik_eigplot
-                ),
-                sgm_corr=None,
-                eta=delta,
-                S_overlap=None,
-            )
-
-            conduct[0, ie_g] += wk_par[ik] * np.sum(cond_aux)
-            conduct_k[0, ik, ie_g] += wk_par[ik] * np.sum(cond_aux)
-
-            if do_eigenchannels:
-                nchan = min(neigchn, cond_aux.shape[0])
-                conduct[1 : 1 + nchan, ie_g] += wk_par[ik] * cond_aux[:nchan]
-                conduct_k[1 : 1 + nchan, ik, ie_g] += wk_par[ik] * cond_aux[:nchan]
-
-            if (
-                do_eigenchannels
-                and do_eigplot
-                and z_eigplot is not None
-                and ie_g == ie_eigplot
-                and ik == ik_eigplot
-                and rank == 0
-            ):
-                write_eigenchannels(
-                    data=z_eigplot,
-                    ie=ie_g,
-                    ik=ik,
-                    vkpt=vkpt_par3D[:, ik],
-                    transport_dir=data.transport_dir,
-                    output_dir=Path("output/eigenchannels"),
-                    prefix="eigchn",
-                    overwrite=True,
-                    verbose=True,
-                )
-
-        avg_iter /= 2 * nkpts_par
-
-        if (ie_g % nprint == 0 or ie_g == ie_start or ie_g == ie_end) and rank == 0:
+    def _finalize_energy(self, avg_iter, ie_g, gC_k, sgmL_k, sgmR_k):
+        avg_iter /= 2 * self.nkpts_par
+        if self.rank == 0:
             print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
             global_timing.timing_upto_now(
                 "do_conductor", label="Total time spent up to now"
             )
 
-        if write_gf:
-            for ir in range(nrtot_par):
-                gf_out[ie_g, ir] = compute_rham(
-                    vr_par3D[:, ir], gC_k, vkpt_par3D.T, wk_par
+        if self.data.symmetry.write_gf:
+            for ir in range(self.nrtot_par):
+                self.gf_out[ie_g, ir] = compute_rham(
+                    self.vr_par3D[:, ir], gC_k, self.vkpt_par3D.T, self.wk_par
+                )
+        if self.data.symmetry.write_lead_sgm:
+            for ir in range(self.nrtot_par):
+                self.rsgmL_out[ie_g, ir] = compute_rham(
+                    self.vr_par3D[:, ir], sgmL_k, self.vkpt_par3D.T, self.wk_par
+                )
+                self.rsgmR_out[ie_g, ir] = compute_rham(
+                    self.vr_par3D[:, ir], sgmR_k, self.vkpt_par3D.T, self.wk_par
                 )
 
-        if write_lead_sgm:
-            for ir in range(nrtot_par):
-                rsgmL_out[ie_g, ir] = compute_rham(
-                    vr_par3D[:, ir], sgmL_k, vkpt_par3D.T, wk_par
-                )
-                rsgmR_out[ie_g, ir] = compute_rham(
-                    vr_par3D[:, ir], sgmR_k, vkpt_par3D.T, wk_par
-                )
+    def _reduce_results(self, conduct, dos, conduct_k, dos_k):
+        self.comm.Allreduce(MPI.IN_PLACE, conduct, op=MPI.SUM)
+        self.comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
+        self.comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
+        self.comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
 
-    comm.Allreduce(MPI.IN_PLACE, conduct, op=MPI.SUM)
-    comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
-    comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
-    comm.Allreduce(MPI.IN_PLACE, dos_k, op=MPI.SUM)
+        if self.data.symmetry.write_gf:
+            self.comm.Allreduce(MPI.IN_PLACE, self.gf_out, op=MPI.SUM)
+        if self.data.symmetry.write_lead_sgm:
+            self.comm.Allreduce(MPI.IN_PLACE, self.rsgmL_out, op=MPI.SUM)
+            self.comm.Allreduce(MPI.IN_PLACE, self.rsgmR_out, op=MPI.SUM)
 
-    if write_gf:
-        comm.Allreduce(MPI.IN_PLACE, gf_out, op=MPI.SUM)
-    if write_lead_sgm:
-        comm.Allreduce(MPI.IN_PLACE, rsgmL_out, op=MPI.SUM)
-        comm.Allreduce(MPI.IN_PLACE, rsgmR_out, op=MPI.SUM)
+    def _write_results(self):
+        if self.rank != 0:
+            return
 
-    if write_gf and rank == 0:
-        write_operator_xml(
-            "greenf.xml", gf_out, ivr_par3D, egrid, dimC, True, "retarded", "eV"
-        )
+        if self.data.symmetry.write_gf:
+            write_operator_xml(
+                "greenf.xml",
+                self.gf_out,
+                self.ivr_par3D,
+                self.egrid,
+                self.dimC,
+                True,
+                "retarded",
+                "eV",
+            )
+        if self.data.symmetry.write_lead_sgm:
+            write_operator_xml(
+                "lead_L_sgm.xml",
+                self.rsgmL_out,
+                self.ivr_par3D,
+                self.egrid,
+                self.dimC,
+                True,
+                "retarded",
+                "eV",
+            )
+            write_operator_xml(
+                "lead_R_sgm.xml",
+                self.rsgmR_out,
+                self.ivr_par3D,
+                self.egrid,
+                self.dimC,
+                True,
+                "retarded",
+                "eV",
+            )
+            write_kresolved_operator_xml(
+                filename="lead_L_k.xml",
+                operator_k=None,  # handle passing k-dependent storage if needed
+                dimwann=self.dimC,
+                vkpt=self.vkpt_par3D,
+            )
 
-    if write_lead_sgm and rank == 0:
-        write_operator_xml(
-            "lead_L_sgm.xml", rsgmL_out, ivr_par3D, egrid, dimC, True, "retarded", "eV"
-        )
-        write_operator_xml(
-            "lead_R_sgm.xml", rsgmR_out, ivr_par3D, egrid, dimC, True, "retarded", "eV"
-        )
-        write_kresolved_operator_xml(
-            filename=f"lead_L_k.ie{ie_g:04d}.xml",
-            operator_k=sgmL_k,
-            dimwann=dimC,
-            vkpt=vkpt_par3D,
-        )
+    def get_k_resolved_conductance(self, conduct_k: np.ndarray) -> np.ndarray:
+        return conduct_k
 
-    return conduct, dos, conduct_k, dos_k
+    def get_k_resolved_dos(self, dos_k: np.ndarray) -> np.ndarray:
+        return dos_k

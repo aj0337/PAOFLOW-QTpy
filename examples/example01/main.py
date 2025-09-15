@@ -5,7 +5,7 @@ import numpy as np
 from mpi4py import MPI
 from time import perf_counter
 
-from PAOFLOW_QTpy.do_conductor import run_conductor
+from PAOFLOW_QTpy.do_conductor import ConductorCalculator
 from PAOFLOW_QTpy.hamiltonian_init import (
     check_leads_are_identical,
     initialize_hamiltonian_blocks,
@@ -193,13 +193,14 @@ def main():
 
     global_timing.start("do_conductor")
     egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
-    conduct, dos, conduct_k, dos_k = run_conductor(
+    calculator = ConductorCalculator(
         data=data,
         blc_blocks=ham_sys.blocks,
         egrid=egrid,
         wk_par=wk_par,
         vkpt_par3D=vkpt_par3D,
     )
+    conduct, dos, conduct_k, dos_k = calculator.run()
 
     global_timing.stop("do_conductor")
 
