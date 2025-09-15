@@ -1,7 +1,6 @@
 import os
 import sys
 from pathlib import Path
-import numpy as np
 from mpi4py import MPI
 from time import perf_counter
 
@@ -11,7 +10,6 @@ from PAOFLOW_QTpy.hamiltonian_init import (
     initialize_hamiltonian_blocks,
 )
 from PAOFLOW_QTpy.io.startup import startup
-from PAOFLOW_QTpy.io.write_header import write_header
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.get_input_params import load_conductor_data_from_yaml
@@ -56,8 +54,6 @@ def main():
     nproc = comm.Get_size()
 
     startup("conductor.py")
-    write_header("Conductor Initialization")
-
     hk_data = parse_atomic_proj(
         file_proj=data.file_names.datafile_C,
         work_dir=work_dir,
@@ -177,21 +173,13 @@ def main():
 
     print(memory_tracker.report(include_real_memory=True))
 
-    write_header("Frequency Loop")
-
     data._freqloop_start_time = perf_counter()
 
-    egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
     calculator = ConductorCalculator(
         data=data,
         blc_blocks=ham_sys.blocks,
-        egrid=egrid,
-        wk_par=wk_par,
-        vkpt_par3D=vkpt_par3D,
     )
     calculator.run()
-
-    write_header("Writing data")
 
     if comm.rank == 0:
         output_dir = Path("output")

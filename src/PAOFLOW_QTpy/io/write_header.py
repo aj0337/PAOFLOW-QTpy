@@ -27,3 +27,14 @@ def write_header(msg: str) -> None:
     print(f"  {separator}")
     print(f"  =  {msg:^66s}=")
     print(f"  {separator}")
+
+
+def headered_function(name: str):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            write_header(name)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

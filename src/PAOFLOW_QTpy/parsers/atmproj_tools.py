@@ -7,6 +7,7 @@ from scipy.linalg import eigh, inv
 
 from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
+from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
 from PAOFLOW_QTpy.io.log_module import log_rank0
 from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
@@ -15,6 +16,7 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 
 
 @timed_function("atmproj_to_internal")
+@headered_function("Conductor Initialization")
 def parse_atomic_proj(
     *,
     input_dict: Optional[Dict] = None,

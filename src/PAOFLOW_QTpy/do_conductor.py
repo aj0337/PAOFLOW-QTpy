@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from mpi4py import MPI
 import numpy as np
-import numpy.typing as npt
 import os
 
 from PAOFLOW_QTpy.io.write_data import (
@@ -13,6 +12,7 @@ from PAOFLOW_QTpy.io.write_data import (
 )
 from PAOFLOW_QTpy.green import compute_conductor_green_function
 from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
+from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
 from PAOFLOW_QTpy.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
@@ -28,15 +28,10 @@ class ConductorCalculator:
         data: ConductorData,
         *,
         blc_blocks: dict,
-        egrid: npt.NDArray[np.float64],
-        wk_par: npt.NDArray[np.float64],
-        vkpt_par3D: npt.NDArray[np.float64],
     ):
         self.data = data
         self.blc_blocks = blc_blocks
-        self.egrid = egrid
-        self.wk_par = wk_par
-        self.vkpt_par3D = vkpt_par3D
+        self.vkpt_par3D = data._runtime.vkpt_par3D
 
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.Get_rank()
@@ -49,12 +44,15 @@ class ConductorCalculator:
         self.ne = data.energy.ne
         self.delta = data.energy.delta
         self.nkpts_par = int(self.runtime.nkpts_par)
+        self.egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
+        self.wk_par = data._runtime.wk_par
 
         self.ivr_par3D = self.runtime.ivr_par3D
         self.vr_par3D = 2 * np.pi * self.ivr_par3D.astype(np.float64)
         self.nrtot_par = int(self.runtime.nrtot_par)
 
     @timed_function("do_conductor")
+    @headered_function("Frequency Loop")
     def run(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self.conduct, self.dos, self.conduct_k, self.dos_k = self.initialize_outputs()
         ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
@@ -328,6 +326,7 @@ class ConductorCalculator:
     def get_k_resolved_dos(self, dos_k: np.ndarray) -> np.ndarray:
         return dos_k
 
+    @headered_function("Writing data")
     def write_output(self, output_dir: Path, postfix: str):
         if self.rank != 0:
             return
