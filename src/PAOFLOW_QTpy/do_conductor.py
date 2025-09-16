@@ -230,7 +230,7 @@ class ConductorCalculator:
                 ie=ie_g,
                 ik=ik,
                 vkpt=self.vkpt_par3D[:, ik],
-                transport_dir=self.data.transport_dir,
+                transport_direction=self.data.transport_direction,
                 output_dir=Path("output/eigenchannels"),
                 prefix="eigchn",
                 overwrite=True,
@@ -328,9 +328,13 @@ class ConductorCalculator:
         return dos_k
 
     @headered_function("Writing data")
-    def write_output(self, output_dir: Path, postfix: str):
+    def write_output(self):
         if self.rank != 0:
             return
+
+        output_dir = Path(self.data.file_names.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        postfix = self.data.file_names.postfix
 
         write_data(self.egrid, self.conduct, "conductance", output_dir, postfix=postfix)
         write_data(self.egrid, self.dos, "doscond", output_dir, postfix=postfix)

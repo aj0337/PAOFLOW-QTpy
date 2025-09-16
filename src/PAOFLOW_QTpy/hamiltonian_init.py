@@ -16,7 +16,7 @@ def initialize_hamiltonian_blocks(
     table_par: np.ndarray,
     datafile_C: str,
     ispin: int,
-    transport_dir: int,
+    transport_direction: int,
     calculation_type: Literal["conductor", "bulk"],
     datafile_L: str = "",
     datafile_R: str = "",
@@ -39,7 +39,7 @@ def initialize_hamiltonian_blocks(
         Path to the `.ham` file for the right lead region.
     `ispin` : int
         Spin index (0-based) to select the spin channel to load.
-    `transport_dir` : int
+    `transport_direction` : int
         Index (1-based) of the transport direction (1 = x, 2 = y, 3 = z).
     `calculation_type` : {"conductor", "bulk"}
         System configuration type.
@@ -55,15 +55,15 @@ def initialize_hamiltonian_blocks(
             return f"{path}.ham"
         return f"{path}.xml.ham"
 
-    def extract_2D_ivrs(ivr3D: np.ndarray, transport_dir: int) -> np.ndarray:
-        if transport_dir == 1:
+    def extract_2D_ivrs(ivr3D: np.ndarray, transport_direction: int) -> np.ndarray:
+        if transport_direction == 1:
             return ivr3D[1:, :]
-        elif transport_dir == 2:
+        elif transport_direction == 2:
             return ivr3D[[0, 2], :]
-        elif transport_dir == 3:
+        elif transport_direction == 3:
             return ivr3D[:2, :]
         else:
-            raise ValueError(f"Invalid transport_dir: {transport_dir}")
+            raise ValueError(f"Invalid transport_direction: {transport_direction}")
 
     ham_system.allocate(ivr_par3D)
 
@@ -77,31 +77,35 @@ def initialize_hamiltonian_blocks(
         ham_system.blc_00R.tag = hamiltonian_data.get("H00_R", {})
         ham_system.blc_01R.tag = hamiltonian_data.get("H01_R", {})
 
-    ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_dir)
+    ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_direction)
 
     for block in ham_system.blocks.values():
         block.ivr_par = ivr_par2D
         block.wr_par = wr_par
         block.table_par = table_par
 
-    read_matrix(with_ham_suffix(datafile_C), ispin, transport_dir, ham_system.blc_00C)
-    read_matrix(with_ham_suffix(datafile_C), ispin, transport_dir, ham_system.blc_CR)
+    read_matrix(
+        with_ham_suffix(datafile_C), ispin, transport_direction, ham_system.blc_00C
+    )
+    read_matrix(
+        with_ham_suffix(datafile_C), ispin, transport_direction, ham_system.blc_CR
+    )
 
     if calculation_type == "conductor":
         read_matrix(
-            with_ham_suffix(datafile_C), ispin, transport_dir, ham_system.blc_LC
+            with_ham_suffix(datafile_C), ispin, transport_direction, ham_system.blc_LC
         )
         read_matrix(
-            with_ham_suffix(datafile_L), ispin, transport_dir, ham_system.blc_00L
+            with_ham_suffix(datafile_L), ispin, transport_direction, ham_system.blc_00L
         )
         read_matrix(
-            with_ham_suffix(datafile_L), ispin, transport_dir, ham_system.blc_01L
+            with_ham_suffix(datafile_L), ispin, transport_direction, ham_system.blc_01L
         )
         read_matrix(
-            with_ham_suffix(datafile_R), ispin, transport_dir, ham_system.blc_00R
+            with_ham_suffix(datafile_R), ispin, transport_direction, ham_system.blc_00R
         )
         read_matrix(
-            with_ham_suffix(datafile_R), ispin, transport_dir, ham_system.blc_01R
+            with_ham_suffix(datafile_R), ispin, transport_direction, ham_system.blc_01R
         )
 
     elif calculation_type == "bulk":

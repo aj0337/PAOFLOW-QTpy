@@ -125,7 +125,7 @@ def write_eigenchannels(
     ie: int,
     ik: int,
     vkpt: np.ndarray,
-    transport_dir: int,
+    transport_direction: int,
     output_dir: Path,
     prefix: str = "eigchn",
     overwrite: bool = True,
@@ -144,7 +144,7 @@ def write_eigenchannels(
         k-point index.
     `vkpt` : (3,) float ndarray
         Coordinates of the k-point in crystal units.
-    `transport_dir` : int
+    `transport_direction` : int
         Direction of transport (typically 1, 2, or 3).
     `output_dir` : Path
         Directory to write the output file.
@@ -164,7 +164,7 @@ def write_eigenchannels(
     -----
     This uses `.npz` to store:
         - eigenchannel data
-        - metadata: ie, ik, vkpt, dims, transport_dir
+        - metadata: ie, ik, vkpt, dims, transport_direction
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{prefix}_ik{ik:04d}_ie{ie:04d}.npz"
@@ -179,7 +179,7 @@ def write_eigenchannels(
         ie=ie,
         ik=ik,
         vkpt=vkpt,
-        transport_dir=transport_dir,
+        transport_direction=transport_direction,
         dim1=data.shape[0],
         dim2=data.shape[1],
     )

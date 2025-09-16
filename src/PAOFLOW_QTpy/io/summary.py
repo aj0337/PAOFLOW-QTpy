@@ -39,7 +39,7 @@ def print_summary(data: ConductorData) -> None:
     log_rank0(f"               R-lead dim. :{data.dimR:>10}")
     log_rank0(f"       Conductance Formula :     {data.conduct_formula}")
     log_rank0(f"                  Carriers :     {data.carriers}")
-    log_rank0(f"       Transport Direction :{data.transport_dir:>10}")
+    log_rank0(f"       Transport Direction :{data.transport_direction:>10}")
     log_rank0(f"          Have Correlation :     {data.advanced.lhave_corr}")
     log_rank0(f"              Write k-data :     {data.symmetry.write_kdata}")
     log_rank0(f"            Write sgm lead :     {data.symmetry.write_lead_sgm}")

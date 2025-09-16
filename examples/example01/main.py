@@ -1,4 +1,3 @@
-from pathlib import Path
 from mpi4py import MPI
 
 from PAOFLOW_QTpy.do_conductor import ConductorCalculator
@@ -41,8 +40,7 @@ def main():
     calculator.run()
 
     if comm.rank == 0:
-        output_dir = Path("output")
-        calculator.write_output(output_dir, postfix=data.file_names.postfix)
+        calculator.write_output()
         global_timing.report()
         print(memory_tracker.report(include_real_memory=True))
 

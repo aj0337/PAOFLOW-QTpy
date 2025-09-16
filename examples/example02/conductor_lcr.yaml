@@ -10,7 +10,7 @@ input_conductor:
   datafile_L: "./alh.save/atomic_proj.xml"
   datafile_C: "./alh.save/atomic_proj.xml"
   datafile_R: "./alh.save/atomic_proj.xml"
-  transport_dir: 3
+  transport_direction: 3
   delta: 0.0005
   do_orthoovp: true
   atmproj_sh: 3.5

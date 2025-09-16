@@ -43,7 +43,7 @@ src/
 |`divide_et_impera`|`divide_work`| Translated | Divides a 1-indexed loop range evenly across MPI ranks. Matches the logic of the Fortran version including remainders. |
 |`do_conductor`(DOS section) |`compute_dos`| Translated & Split | Computes both total and k-resolved DOS from the diagonal of the Green's function. Returned as`(dos_k, dos)`. |
 | `T_kpoints_module` |`kpoints.py` | Translated | Contains logic for generating 2D k-point mesh orthogonal to transport direction, applying symmetry reduction, converting to 3D, and computing phase factors for Fourier transforms. Includes`initialize_kpoints`, `kpoints_rmask`, `kpoints_equivalent`, and `compute_fourier_phase_table`. |
-| `wd_write_eigchn` |`write_eigenchannels` | Translated | Writes eigenchannel vectors`z_eigplot`to`.npz`format with metadata including`ie`, `ik`, `vkpt`, and `transport_dir`. Handles safe file output and logs location. |
+| `wd_write_eigchn` |`write_eigenchannels` | Translated | Writes eigenchannel vectors`z_eigplot`to`.npz`format with metadata including`ie`, `ik`, `vkpt`, and `transport_direction`. Handles safe file output and logs location. |
 | `atmproj_tools`| `parse_atomic_proj` | Translated | Top-level function that orchestrates parsing of`data-file.xml`and`atomic_proj.xml`, builds H(k), and optionally writes `.ham`and`.space`. |
 | (new in Python) | `parse_data_file` | New | Extracts lattice vectors, reciprocal vectors, and atomic positions/types from`data-file.xml`. |
 | (new in Python) | `parse_atomic_proj_xml` | New | Parses eigenvalues, k-points, projectors, and overlaps from`atomic_proj.xml`. |

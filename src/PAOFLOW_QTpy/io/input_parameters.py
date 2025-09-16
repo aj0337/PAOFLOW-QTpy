@@ -58,6 +58,7 @@ FileFormat = Literal[
 
 class FileNamesData(PydanticBaseModel):
     work_dir: str = "./"
+    output_dir: str = "./"
     prefix: str = ""
     postfix: str = ""
     datafile_L: str = ""
@@ -270,7 +271,7 @@ class ConductorData(PydanticBaseModel):
     dimL: NonNegativeInt = 0
     dimR: NonNegativeInt = 0
     dimC: NonNegativeInt = 0
-    transport_dir: Annotated[int, conint(ge=1, le=3)] = 0
+    transport_direction: Annotated[int, conint(ge=1, le=3)] = 0
     calculation_type: CalculationType = "conductor"
     conduct_formula: ConductFormula = "landauer"
     carriers: Carriers = "electrons"
@@ -313,7 +314,7 @@ class ConductorData(PydanticBaseModel):
             "dimL",
             "dimR",
             "dimC",
-            "transport_dir",
+            "transport_direction",
             "calculation_type",
             "conduct_formula",
             "carriers",
@@ -395,11 +396,11 @@ class ConductorData(PydanticBaseModel):
                 raise ValueError("emin < 0.0, invalid emin")
             self.energy.emax = self.energy.emax**2 / (rydcm1 / np.sqrt(amconv)) ** 2
 
-    @validator("transport_dir")
-    def check_transport_dir(cls, value) -> None:
+    @validator("transport_direction")
+    def check_transport_direction(cls, value) -> None:
         if value < 1 or value > 3:
             raise ValueError(
-                "Invalid value for transport_dir. Allowed values are 1,2 or 3"
+                "Invalid value for transport_direction. Allowed values are 1,2 or 3"
             )
         return value
 

@@ -305,7 +305,7 @@ class OperatorBlock:
     def set_ivr_par_from_nr(
         self,
         nr_par: tuple[int, int],
-        transport_dir: int,
+        transport_direction: int,
     ) -> None:
         """
         Set the `ivr_par` attribute from a 2D R-vector mesh orthogonal to the transport direction.
@@ -314,7 +314,7 @@ class OperatorBlock:
         ----------
         `nr_par` : tuple of int
             Mesh dimensions (n1, n2) orthogonal to the transport axis.
-        `transport_dir` : int
+        `transport_direction` : int
             Direction of transport (1=x, 2=y, 3=z).
         """
 
@@ -324,7 +324,7 @@ class OperatorBlock:
         # Compute full 3D ivr (needed by read_matrix)
         ivr_par3D = np.array(
             [
-                kpoints_mask(ivr_par_2d[:, i], 0, transport_dir)
+                kpoints_mask(ivr_par_2d[:, i], 0, transport_direction)
                 for i in range(ivr_par_2d.shape[1])
             ]
         ).T

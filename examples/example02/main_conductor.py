@@ -74,22 +74,22 @@ def main():
     global_timing.stop("atmproj_to_internal")
 
     data_dict["nk_par"], data_dict["nr_par"] = initialize_meshsize(
-        nr_full=hk_data["nr"], transport_dir=data_dict["transport_dir"]
+        nr_full=hk_data["nr"], transport_direction=data_dict["transport_direction"]
     )
 
     s_par = data_dict["s"][:2]
-    nk_par3d = kpoints_mask(data_dict["nk_par"], 1, data_dict["transport_dir"])
-    s_par3d = kpoints_mask(s_par, 0, data_dict["transport_dir"])
-    nr_par3d = kpoints_mask(data_dict["nr_par"], 1, data_dict["transport_dir"])
+    nk_par3d = kpoints_mask(data_dict["nk_par"], 1, data_dict["transport_direction"])
+    s_par3d = kpoints_mask(s_par, 0, data_dict["transport_direction"])
+    nr_par3d = kpoints_mask(data_dict["nr_par"], 1, data_dict["transport_direction"])
 
     vkpt_par3D, wk_par = initialize_kpoints(
         data_dict["nk_par"],
         s_par=s_par,
-        transport_dir=data_dict["transport_dir"],
+        transport_direction=data_dict["transport_direction"],
         use_sym=data_dict["use_sym"],
     )
     ivr_par3D, wr_par = initialize_r_vectors(
-        data_dict["nr_par"], data_dict["transport_dir"]
+        data_dict["nr_par"], data_dict["transport_direction"]
     )
 
     data_dict.update(
@@ -162,7 +162,7 @@ def main():
         datafile_L=datafile_L,
         datafile_R=datafile_R,
         ispin=data_dict["ispin"],
-        transport_dir=data_dict["transport_dir"],
+        transport_direction=data_dict["transport_direction"],
         calculation_type=calculation_type,
         hamiltonian_data=data_dict["hamiltonian_data"],
     )
@@ -212,7 +212,7 @@ def main():
         blc_blocks=ham_sys.blocks,
         wk_par=wk_par,
         vkpt_par3D=vkpt_par3D,
-        transport_dir=data_dict["transport_dir"],
+        transport_direction=data_dict["transport_direction"],
         conduct_formula=data_dict["conduct_formula"],
         do_eigenchannels=data_dict.get("do_eigenchannels", False),
         neigchnx=data_dict.get("neigchnx", 0),

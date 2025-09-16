@@ -6,7 +6,7 @@ input_conductor:
   emax: 2.0
   ne: 9001
   datafile_C: "./al5.save/atomic_proj.xml"
-  transport_dir: 3
+  transport_direction: 3
   delta: 0.0005
   do_orthoovp: true
   atmproj_sh: 3.5
@@ -14,6 +14,7 @@ input_conductor:
   write_gf: false
   write_lead_sgm: false
   use_sym: false
+  output_dir: "output"
 
 hamiltonian_data:
   H00_C:

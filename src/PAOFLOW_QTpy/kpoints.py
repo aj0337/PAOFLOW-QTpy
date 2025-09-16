@@ -7,7 +7,7 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 def kpoints_mask(
     vect: Union[Tuple[int, int], np.ndarray],
     init: Union[int, float],
-    transport_dir: int,
+    transport_direction: int,
 ) -> np.ndarray:
     """
     Embed a 2D vector into 3D space by inserting a value along the transport direction.
@@ -22,7 +22,7 @@ def kpoints_mask(
         Value to insert along the transport direction:
         - Use `1` for mesh dimensions
         - Use `0` for shift vectors or physical coordinates
-    `transport_dir` : int
+    `transport_direction` : int
         Direction of transport: 1 = x, 2 = y, 3 = z.
         This direction will receive the `init` value, and `vect` will fill the two orthogonal directions.
 
@@ -42,11 +42,11 @@ def kpoints_mask(
     physical vectors (like k-points or R-vectors in fractional coordinates).
 
     Mapping logic:
-        If `transport_dir == 1` (x-direction transport):
+        If `transport_direction == 1` (x-direction transport):
             out = [init, vect[0], vect[1]]
-        If `transport_dir == 2` (y-direction transport):
+        If `transport_direction == 2` (y-direction transport):
             out = [vect[0], init, vect[1]]
-        If `transport_dir == 3` (z-direction transport):
+        If `transport_direction == 3` (z-direction transport):
             out = [vect[0], vect[1], init]
     """
     vect = np.asarray(vect)
@@ -55,15 +55,15 @@ def kpoints_mask(
 
     out = np.full(3, init, dtype=np.result_type(vect.dtype, type(init)))
 
-    if transport_dir == 1:
+    if transport_direction == 1:
         out[1:] = vect
-    elif transport_dir == 2:
+    elif transport_direction == 2:
         out[0] = vect[0]
         out[2] = vect[1]
-    elif transport_dir == 3:
+    elif transport_direction == 3:
         out[:2] = vect
     else:
-        raise ValueError(f"Invalid transport direction: {transport_dir}")
+        raise ValueError(f"Invalid transport direction: {transport_direction}")
 
     return out
 
@@ -101,7 +101,7 @@ def kpoints_equivalent(v1: np.ndarray, v2: np.ndarray, tol: float = 1e-6) -> boo
 
 def initialize_meshsize(
     nr_full: np.ndarray,
-    transport_dir: int,
+    transport_direction: int,
     nk_par: Optional[np.ndarray] = None,
     use_safe_kmesh: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -114,7 +114,7 @@ def initialize_meshsize(
     `nr_full` : (3,) ndarray of int
         Full 3D R-vector mesh sizes along (x, y, z) directions.
         For example: array([2, 2, 3])
-    `transport_dir` : int
+    `transport_direction` : int
         Transport direction axis (1-based): 1 = x, 2 = y, 3 = z.
     `nk_par` : Optional[(2,) ndarray of int]
         User-specified number of k-points in the 2D plane orthogonal to transport.
@@ -134,7 +134,7 @@ def initialize_meshsize(
     -----
     Example:
         nr_full = np.array([2, 2, 3])
-        transport_dir = 3
+        transport_direction = 3
 
     → nr_par = array([2, 2])  # selects x and y directions
     → nk_par = array([2, 2]) if not provided
@@ -143,11 +143,11 @@ def initialize_meshsize(
         raise TypeError("`nr_full` must be a NumPy array")
     if nr_full.shape != (3,):
         raise ValueError("`nr_full` must have shape (3,)")
-    if transport_dir not in (1, 2, 3):
-        raise ValueError(f"Invalid transport direction: {transport_dir}")
+    if transport_direction not in (1, 2, 3):
+        raise ValueError(f"Invalid transport direction: {transport_direction}")
 
     axes = [0, 1, 2]
-    axes.remove(transport_dir - 1)
+    axes.remove(transport_direction - 1)
     nr_par = nr_full[axes]
 
     if nk_par is None or np.all(np.asarray(nk_par) == 0):
@@ -170,7 +170,7 @@ def initialize_meshsize(
 def initialize_kpoints(
     nk_par: np.ndarray,
     s_par: np.ndarray,
-    transport_dir: int,
+    transport_direction: int,
     use_sym: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -182,7 +182,7 @@ def initialize_kpoints(
         Number of k-points along the two non-transport directions.
     `s_par` : (2,) ndarray of int
         Shifts (in fractional units) for the mesh in the two non-transport directions.
-    `transport_dir` : int
+    `transport_direction` : int
         Transport direction (1 = x, 2 = y, 3 = z).
     `use_sym` : bool
         Whether to symmetrize the mesh under time-reversal (k ≡ -k).
@@ -197,7 +197,7 @@ def initialize_kpoints(
     Notes
     -----
     Example:
-        If nk_par = [2, 2], s_par = [0, 0], transport_dir = 3
+        If nk_par = [2, 2], s_par = [0, 0], transport_direction = 3
 
         kx(i) = (i - 1) / 2
         ky(j) = (j - 1) / 2
@@ -238,7 +238,9 @@ def initialize_kpoints(
     wk_par = np.array(weights, dtype=np.float64)
     wk_par /= wk_par.sum()
 
-    vkpt_par3D = np.array([kpoints_mask(kpt, 0.0, transport_dir) for kpt in vkpts_2d])
+    vkpt_par3D = np.array(
+        [kpoints_mask(kpt, 0.0, transport_direction) for kpt in vkpts_2d]
+    )
     return vkpt_par3D, wk_par
 
 
@@ -292,7 +294,7 @@ def compute_fourier_phase_table(
 
 def initialize_r_vectors(
     nr_par: Tuple[int, int],
-    transport_dir: int,
+    transport_direction: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate 3D R-vectors and weights based on a uniform 2D integer grid orthogonal to the transport direction.
@@ -301,7 +303,7 @@ def initialize_r_vectors(
     ----------
     `nr_par` : Tuple[int, int]
         2D mesh sizes for R-vectors in the directions orthogonal to transport.
-    `transport_dir` : int
+    `transport_direction` : int
         Direction of transport (1-based, 1 = x, 2 = y, 3 = z).
 
     Returns
@@ -322,9 +324,9 @@ def initialize_r_vectors(
     If a corresponding -R is not found, it is added, and the weights of both R and -R are halved.
 
     The 2D vectors are then expanded to 3D using:
-        if transport_dir == 1: (0, R1, R2)
-        if transport_dir == 2: (R1, 0, R2)
-        if transport_dir == 3: (R1, R2, 0)
+        if transport_direction == 1: (0, R1, R2)
+        if transport_direction == 2: (R1, 0, R2)
+        if transport_direction == 3: (R1, R2, 0)
     """
 
     nx, ny = nr_par
@@ -353,20 +355,20 @@ def initialize_r_vectors(
             counter += 1
         i += 1
 
-    def kpoints_imask(ivect: np.ndarray, transport_dir: int) -> np.ndarray:
+    def kpoints_imask(ivect: np.ndarray, transport_direction: int) -> np.ndarray:
         imask = np.zeros(3, dtype=int)
-        if transport_dir == 1:
+        if transport_direction == 1:
             imask[1:] = ivect
-        elif transport_dir == 2:
+        elif transport_direction == 2:
             imask[0] = ivect[0]
             imask[2] = ivect[1]
-        elif transport_dir == 3:
+        elif transport_direction == 3:
             imask[:2] = ivect
         else:
-            raise ValueError(f"Invalid transport direction: {transport_dir}")
+            raise ValueError(f"Invalid transport direction: {transport_direction}")
         return imask
 
-    ivr_par3D = np.array([kpoints_imask(R, transport_dir) for R in R_array])
+    ivr_par3D = np.array([kpoints_imask(R, transport_direction) for R in R_array])
     wr_par = w_array
 
     return ivr_par3D, wr_par

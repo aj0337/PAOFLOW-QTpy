@@ -1,6 +1,6 @@
 ---
 dimC: 20
-transport_dir: 3
+transport_direction: 3
 calculation_type: "bulk"
 conduct_formula: "landauer"
 carriers: "electrons"

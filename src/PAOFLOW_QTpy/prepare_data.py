@@ -62,21 +62,21 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
     )
 
     nk_par, nr_par = initialize_meshsize(
-        nr_full=hk_data["nr"], transport_dir=data.transport_dir
+        nr_full=hk_data["nr"], transport_direction=data.transport_direction
     )
 
     s_par = data.kpoint_grid.s[:2]
-    nk_par3d = kpoints_mask(nk_par, 1, data.transport_dir)
-    s_par3d = kpoints_mask(s_par, 0, data.transport_dir)
-    nr_par3d = kpoints_mask(nr_par, 1, data.transport_dir)
+    nk_par3d = kpoints_mask(nk_par, 1, data.transport_direction)
+    s_par3d = kpoints_mask(s_par, 0, data.transport_direction)
+    nr_par3d = kpoints_mask(nr_par, 1, data.transport_direction)
 
     vkpt_par3D, wk_par = initialize_kpoints(
         nk_par,
         s_par=s_par,
-        transport_dir=data.transport_dir,
+        transport_direction=data.transport_direction,
         use_sym=data.symmetry.use_sym,
     )
-    ivr_par3D, wr_par = initialize_r_vectors(nr_par, data.transport_dir)
+    ivr_par3D, wr_par = initialize_r_vectors(nr_par, data.transport_direction)
 
     data.set_runtime_data(
         runtime=RuntimeData(
@@ -228,7 +228,7 @@ def prepare_hamiltonian_blocks_and_leads(
         datafile_L=data.file_names.datafile_L,
         datafile_R=data.file_names.datafile_R,
         ispin=data.advanced.ispin,
-        transport_dir=data.transport_dir,
+        transport_direction=data.transport_direction,
         calculation_type=data.calculation_type,
     )
 

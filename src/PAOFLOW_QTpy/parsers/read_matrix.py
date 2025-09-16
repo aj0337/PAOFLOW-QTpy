@@ -16,7 +16,7 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 def read_matrix(
     filename: str,
     ispin: int,
-    transport_dir: int,
+    transport_direction: int,
     opr: OperatorBlock,
 ) -> None:
     """
@@ -29,7 +29,7 @@ def read_matrix(
         Path to the input .ham file.
     `ispin` : int
         Spin index (0-based) to select the spin component (if applicable).
-    `transport_dir` : int
+    `transport_direction` : int
         Transport direction (1=x, 2=y, 3=z).
     `opr` : OperatorBlock
         Target operator block to populate.
@@ -125,7 +125,7 @@ def read_matrix(
         ivr_aux = np.zeros(3, dtype=int)
         j = 0
         for i in range(3):
-            if i + 1 == transport_dir:
+            if i + 1 == transport_direction:
                 if label.lower() in {
                     "block_00c",
                     "block_00r",

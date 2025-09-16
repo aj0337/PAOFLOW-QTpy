@@ -8,7 +8,7 @@ input_conductor:
   # emin: 1.9
   emax: 2.0
   datafile_C: "./alh.save/atomic_proj.xml"
-  transport_dir: 3
+  transport_direction: 3
   delta: 0.0005
   do_orthoovp: true
   atmproj_sh: 3.5
