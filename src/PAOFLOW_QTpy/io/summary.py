@@ -106,9 +106,7 @@ def print_summary(data: ConductorData) -> None:
             f"\n       Parallel kpoints grid:        nk = ( {nk_par3d[0]:3} {nk_par3d[1]:3}  {nk_par3d[2]:3} )   s = ( {s_par3d[0]:3} {s_par3d[1]:3}  {s_par3d[2]:3} )"
         )
 
-        for i, (vkpt, weight) in enumerate(
-            zip(runtime.vkpt_par3D.T, runtime.wk_par), 1
-        ):
+        for i, (vkpt, weight) in enumerate(zip(runtime.vkpt_par3D, runtime.wk_par), 1):
             log_rank0(
                 f"       k ({i:3}) =    ( {vkpt[0]:9.5f} {vkpt[1]:9.5f} {vkpt[2]:9.5f} ),   weight = {weight:8.4f}"
             )
@@ -118,7 +116,7 @@ def print_summary(data: ConductorData) -> None:
             f"\n       Parallel R vector grid:       nr = ( {nr_par3d[0]:3} {nr_par3d[1]:3}  {nr_par3d[2]:3} )"
         )
 
-        for i, (ivr, weight) in enumerate(zip(runtime.ivr_par3D.T, runtime.wr_par), 1):
+        for i, (ivr, weight) in enumerate(zip(runtime.ivr_par3D, runtime.wr_par), 1):
             log_rank0(
                 f"       R ({i:3}) =    ( {ivr[0]:9.5f} {ivr[1]:9.5f} {ivr[2]:9.5f} ),   weight = {weight:8.4f}"
             )

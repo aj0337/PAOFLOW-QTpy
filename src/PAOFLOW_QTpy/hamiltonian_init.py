@@ -65,7 +65,6 @@ def initialize_hamiltonian_blocks(
         else:
             raise ValueError(f"Invalid transport_dir: {transport_dir}")
 
-    # Allocate operator blocks
     ham_system.allocate(ivr_par3D)
 
     ham_system.blc_00C.tag = hamiltonian_data.get("H00_C", {})
@@ -78,7 +77,6 @@ def initialize_hamiltonian_blocks(
         ham_system.blc_00R.tag = hamiltonian_data.get("H00_R", {})
         ham_system.blc_01R.tag = hamiltonian_data.get("H01_R", {})
 
-    # Assign 2D ivr_par to all blocks for use in read_matrix
     ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_dir)
 
     for block in ham_system.blocks.values():
@@ -86,7 +84,6 @@ def initialize_hamiltonian_blocks(
         block.wr_par = wr_par
         block.table_par = table_par
 
-    # Read Hamiltonian blocks
     read_matrix(with_ham_suffix(datafile_C), ispin, transport_dir, ham_system.blc_00C)
     read_matrix(with_ham_suffix(datafile_C), ispin, transport_dir, ham_system.blc_CR)
 
