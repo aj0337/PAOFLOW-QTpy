@@ -62,7 +62,7 @@ class MemoryTracker:
 
         print("  </MEMORY_USAGE>\n", file=output)
 
-        return output.getvalue()
+        print(output.getvalue())
 
 
 def hamiltonian_memusage(mode: str) -> float:

@@ -42,7 +42,7 @@ def main():
     if comm.rank == 0:
         calculator.write_output()
         global_timing.report()
-        print(memory_tracker.report(include_real_memory=True))
+        memory_tracker.report(include_real_memory=True)
 
 
 if __name__ == "__main__":
