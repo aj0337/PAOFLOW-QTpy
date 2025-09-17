@@ -4,7 +4,7 @@ from typing import Literal
 
 import numpy as np
 
-from PAOFLOW_QTpy.kpoints import compute_ivr_par, kpoints_mask
+from PAOFLOW_QTpy.grid.kpoints import compute_ivr_par, kpoints_mask
 
 
 class OperatorBlockView:

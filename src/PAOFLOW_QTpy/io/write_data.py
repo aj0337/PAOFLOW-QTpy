@@ -7,7 +7,7 @@ from typing import Dict, Optional
 import logging
 import numpy.typing as npt
 
-from PAOFLOW_QTpy.compute_rham import compute_rham
+from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
 
 

@@ -27,7 +27,7 @@ from PAOFLOW_QTpy.smearing_base import smearing_func
 from PAOFLOW_QTpy.smearing_T import SmearingData
 from PAOFLOW_QTpy.kpoints import KpointsData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
-from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
+from PAOFLOW_QTpy.hamiltonian.hamiltonian import HamiltonianSystem
 from PAOFLOW_QTpy.workspace import Workspace
 from PAOFLOW_QTpy.utils.timing import global_timing
 

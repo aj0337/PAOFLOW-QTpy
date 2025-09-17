@@ -1,6 +1,6 @@
 from typing import Literal
 import numpy as np
-from PAOFLOW_QTpy.operator_blc import OperatorBlock
+from PAOFLOW_QTpy.hamiltonian.operator_blc import OperatorBlock
 
 
 class HamiltonianSystem:

@@ -1,8 +1,8 @@
 from typing import Literal, Optional
 
 import numpy as np
-from PAOFLOW_QTpy.gzero_maker import compute_non_interacting_gf
-from PAOFLOW_QTpy.operator_blc import OperatorBlockView
+from PAOFLOW_QTpy.hamiltonian.gzero_maker import compute_non_interacting_gf
+from PAOFLOW_QTpy.hamiltonian.operator_blc import OperatorBlockView
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 

@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from typing import Optional, Dict
 from scipy.linalg import eigh, inv
 
-from PAOFLOW_QTpy.get_rgrid import grids_get_rgrid
+from PAOFLOW_QTpy.grid.get_rgrid import grids_get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
 from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell

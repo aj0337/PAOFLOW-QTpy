@@ -4,8 +4,8 @@ import os
 from typing import Callable
 from mpi4py import MPI
 
-from PAOFLOW_QTpy.hamiltonian import HamiltonianSystem
-from PAOFLOW_QTpy.hamiltonian_init import (
+from PAOFLOW_QTpy.hamiltonian.hamiltonian import HamiltonianSystem
+from PAOFLOW_QTpy.hamiltonian.hamiltonian_init import (
     check_leads_are_identical,
     initialize_hamiltonian_blocks,
 )
@@ -14,7 +14,7 @@ from PAOFLOW_QTpy.io.startup import startup
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.input_parameters import ConductorData, RuntimeData
-from PAOFLOW_QTpy.kpoints import (
+from PAOFLOW_QTpy.grid.kpoints import (
     KpointsData,
     compute_fourier_phase_table,
     initialize_meshsize,
@@ -22,9 +22,9 @@ from PAOFLOW_QTpy.kpoints import (
     initialize_r_vectors,
     kpoints_mask,
 )
-from PAOFLOW_QTpy.smearing_T import SmearingData
+from PAOFLOW_QTpy.smearing.smearing_T import SmearingData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
-from PAOFLOW_QTpy.workspace import Workspace
+from PAOFLOW_QTpy.workspace.workspace import Workspace
 
 
 def prepare_conductor(yaml_file: str) -> ConductorData:

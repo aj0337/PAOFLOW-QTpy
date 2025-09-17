@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, Literal
-from PAOFLOW_QTpy.operator_blc import OperatorBlockView
+from PAOFLOW_QTpy.hamiltonian.operator_blc import OperatorBlockView
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 

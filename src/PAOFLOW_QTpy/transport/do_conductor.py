@@ -10,14 +10,14 @@ from PAOFLOW_QTpy.io.write_data import (
     write_operator_xml,
     write_kresolved_operator_xml,
 )
-from PAOFLOW_QTpy.green import compute_conductor_green_function
-from PAOFLOW_QTpy.hamiltonian_setup import hamiltonian_setup
+from PAOFLOW_QTpy.transport.green import compute_conductor_green_function
+from PAOFLOW_QTpy.hamiltonian.hamiltonian_setup import hamiltonian_setup
 from PAOFLOW_QTpy.io.write_header import headered_function
-from PAOFLOW_QTpy.leads_self_energy import build_self_energies_from_blocks
-from PAOFLOW_QTpy.transmittance import evaluate_transmittance
+from PAOFLOW_QTpy.transport.leads_self_energy import build_self_energies_from_blocks
+from PAOFLOW_QTpy.transport.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
-from PAOFLOW_QTpy.compute_rham import compute_rham
+from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
 from PAOFLOW_QTpy.io.write_data import write_data
 
@@ -106,7 +106,7 @@ class ConductorCalculator:
         if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
             print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
 
-        gC_k, sgmL_k, sgmR_k = self.allocate_k_dependent()
+        gC_k, sgmL_k, sgmR_k = self.initialize_k_dependent()
         avg_iter = 0.0
 
         for ik in range(self.nkpts_par):
@@ -126,7 +126,7 @@ class ConductorCalculator:
         self.finalize_energy(avg_iter, ie_g, gC_k, sgmL_k, sgmR_k)
         return conduct, dos
 
-    def allocate_k_dependent(self):
+    def initialize_k_dependent(self):
         gC_k = (
             np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
             if self.data.symmetry.write_gf

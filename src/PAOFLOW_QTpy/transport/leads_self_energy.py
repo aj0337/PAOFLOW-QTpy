@@ -1,9 +1,9 @@
 import numpy as np
-from PAOFLOW_QTpy.green import compute_surface_green_function
-from PAOFLOW_QTpy.transfer import compute_surface_transfer_matrices
+from PAOFLOW_QTpy.transport.green import compute_surface_green_function
+from PAOFLOW_QTpy.transport.transfer import compute_surface_transfer_matrices
 
 
-from PAOFLOW_QTpy.operator_blc import OperatorBlockView
+from PAOFLOW_QTpy.hamiltonian.operator_blc import OperatorBlockView
 
 
 def build_self_energies_from_blocks(

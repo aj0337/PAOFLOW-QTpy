@@ -3,10 +3,10 @@ from __future__ import annotations
 import numpy as np
 from pathlib import Path
 
-from PAOFLOW_QTpy.operator_blc import OperatorBlock
+from PAOFLOW_QTpy.hamiltonian.operator_blc import OperatorBlock
 from PAOFLOW_QTpy.io.iotk_reader import IOTKReader
 from PAOFLOW_QTpy.parsers.parser_base import parse_index_array
-from PAOFLOW_QTpy.fourier_par import fourier_transform_real_to_kspace
+from PAOFLOW_QTpy.hamiltonian.fourier_par import fourier_transform_real_to_kspace
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 # TODO check if fortran is also meant to skip block VR.1 and only read blocks  VR.2, VR.3 ... Initial tests seem to suggest that this is happening in the fortran version and hence implemented ths same way in python

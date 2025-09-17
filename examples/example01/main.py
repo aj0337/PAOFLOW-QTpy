@@ -1,8 +1,8 @@
 from mpi4py import MPI
 
-from PAOFLOW_QTpy.do_conductor import ConductorCalculator
+from PAOFLOW_QTpy.transport.do_conductor import ConductorCalculator
 from PAOFLOW_QTpy.parsers.parser_base import parse_args
-from PAOFLOW_QTpy.prepare_data import (
+from PAOFLOW_QTpy.workspace.prepare_data import (
     prepare_conductor,
     prepare_hamiltonian_blocks_and_leads,
     prepare_hamiltonian_system,
@@ -10,7 +10,7 @@ from PAOFLOW_QTpy.prepare_data import (
     prepare_smearing,
     prepare_workspace,
 )
-from PAOFLOW_QTpy.smearing_base import smearing_func
+from PAOFLOW_QTpy.smearing.smearing_base import smearing_func
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 
