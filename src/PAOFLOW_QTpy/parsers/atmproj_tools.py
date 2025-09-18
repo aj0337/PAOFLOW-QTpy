@@ -319,7 +319,7 @@ def build_hamiltonian_from_proj(
     for isp in range(nspin):
         for ik in range(nkpts):
             if opts.shifting_scheme == 2:
-                H = build_scheme2(eig, proj, ik, isp, opts, natomwfc)
+                H = build_scheme2(eig, proj, ik, isp, opts)
             else:
                 H = build_scheme1(eig, proj, ik, isp, opts, atmproj_nbnd_, natomwfc)
 
@@ -384,7 +384,6 @@ def build_scheme2(
     ik: int,
     isp: int,
     opts: HamiltonianOptions,
-    natomwfc: int,
 ) -> np.ndarray:
     mask = [ib for ib in range(eig.shape[0]) if eig[ib, ik, isp] < opts.sh]
     if not mask:
