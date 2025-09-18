@@ -252,6 +252,7 @@ class AdvancedSettings(PydanticBaseModel):
     lhave_corr: bool = False
     ldynam_corr: bool = False
     leads_are_identical: bool = True
+    shifting_scheme: NonNegativeInt = 1
 
     @field_validator("ispin")
     @classmethod

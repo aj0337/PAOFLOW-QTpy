@@ -7,6 +7,7 @@ import numpy as np
 from scipy.linalg import eigh, inv
 
 from PAOFLOW_QTpy.grid.rgrid import get_rgrid
+from PAOFLOW_QTpy.io.input_parameters import ConductorData
 from PAOFLOW_QTpy.io.log_module import (
     log_proj_data,
     log_rank0,
@@ -97,10 +98,7 @@ def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
     log_section_start("atmproj_read_ext --massive data")
     hk_data = build_hamiltonian_from_proj(
         proj_data,
-        atmproj_sh=opts.atmproj_sh,
-        atmproj_thr=opts.atmproj_thr,
-        atmproj_nbnd=opts.atmproj_nbnd,
-        do_orthoovp=opts.do_orthoovp,
+        data,
     )
     log_section_end("atmproj_read_ext --massive data")
 
@@ -221,12 +219,7 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
 
 def build_hamiltonian_from_proj(
     proj_data: Dict,
-    atmproj_sh: float,
-    atmproj_thr: float,
-    atmproj_nbnd: Optional[int],
-    do_orthoovp: bool,
-    atmproj_do_norm: bool = False,
-    shifting_scheme: int = 1,
+    data: ConductorData,
 ) -> Dict[str, np.ndarray]:
     """
     Construct H(k) from projection data.
@@ -307,16 +300,18 @@ def build_hamiltonian_from_proj(
     natomwfc = proj_data["natomwfc"]
 
     opts = HamiltonianOptions(
-        sh=atmproj_sh,
-        thr=atmproj_thr,
-        nbnd=atmproj_nbnd,
-        do_norm=atmproj_do_norm,
-        do_orthoovp=do_orthoovp,
-        shifting_scheme=shifting_scheme,
+        sh=data.atomic_proj.atmproj_sh,
+        thr=data.atomic_proj.atmproj_thr,
+        nbnd=data.atomic_proj.atmproj_nbnd,
+        do_norm=data.atomic_proj.atmproj_do_norm,
+        do_orthoovp=data.atomic_proj.do_orthoovp,
+        shifting_scheme=data.advanced.shifting_scheme,
     )
 
     atmproj_nbnd_ = (
-        min(atmproj_nbnd, nbnd) if atmproj_nbnd and atmproj_nbnd > 0 else nbnd
+        min(data.atomic_proj.atmproj_nbnd, nbnd)
+        if data.atomic_proj.atmproj_nbnd and data.atomic_proj.atmproj_nbnd > 0
+        else nbnd
     )
     Hk = np.zeros((nspin, nkpts, natomwfc, natomwfc), dtype=np.complex128)
     Sk = S_raw.copy() if not opts.do_orthoovp and S_raw is not None else None
