@@ -10,6 +10,7 @@ from PAOFLOW_QTpy.io.write_data import (
     write_eigenchannels,
     write_operator_xml,
     write_kresolved_operator_xml,
+    write_data,
 )
 from PAOFLOW_QTpy.transport.green import compute_conductor_green_function
 from PAOFLOW_QTpy.hamiltonian.hamiltonian_setup import hamiltonian_setup
@@ -20,7 +21,6 @@ from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
-from PAOFLOW_QTpy.io.write_data import write_data
 
 
 class ConductorCalculator:
@@ -64,11 +64,16 @@ class ConductorCalculator:
         ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
         for ie_g in range(ie_start, ie_end + 1):
             self.conduct, self.dos = self.process_energy(
-                self.conduct, self.dos, self.conduct_k, self.dos_k, ie_g
+                self.conduct,
+                self.dos,
+                self.conduct_k,
+                self.dos_k,
+                ie_g,
+                ie_start,
+                ie_end,
             )
         self.reduce_results(self.conduct, self.dos, self.conduct_k, self.dos_k)
         self.write_operators()
-
         return self.conduct, self.dos, self.conduct_k, self.dos_k
 
     def initialize_outputs(self):
@@ -107,7 +112,9 @@ class ConductorCalculator:
 
         return conduct, dos, conduct_k, dos_k
 
-    def process_energy(self, conduct, dos, conduct_k, dos_k, ie_g: int):
+    def process_energy(
+        self, conduct, dos, conduct_k, dos_k, ie_g: int, ie_start: int, ie_end: int
+    ):
         nprint = self.data.iteration.nprint
         if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
             print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
@@ -129,7 +136,17 @@ class ConductorCalculator:
             if self.data.symmetry.write_lead_sgm:
                 sgmL_k[ik], sgmR_k[ik] = sigma_L, sigma_R
 
-        self.finalize_energy(avg_iter, ie_g, gC_k, sgmL_k, sgmR_k)
+        self.finalize_energy(ie_g, gC_k, sgmL_k, sgmR_k)
+
+        if (
+            ie_g % nprint == 0 or ie_g == ie_start or ie_g == ie_end
+        ) and self.rank == 0:
+            avg_iter /= 2 * self.nkpts_par
+            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
+            global_timing.timing_upto_now(
+                "do_conductor", label="Total time spent up to now"
+            )
+
         return conduct, dos
 
     def initialize_k_dependent(self):
@@ -251,14 +268,7 @@ class ConductorCalculator:
             conduct[1 : 1 + nchan, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
             conduct_k[1 : 1 + nchan, ik, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
 
-    def finalize_energy(self, avg_iter, ie_g, gC_k, sgmL_k, sgmR_k):
-        avg_iter /= 2 * self.nkpts_par
-        if self.rank == 0:
-            print(f"  T matrix converged after avg. # of iterations {avg_iter:10.3f}\n")
-            global_timing.timing_upto_now(
-                "do_conductor", label="Total time spent up to now"
-            )
-
+    def finalize_energy(self, ie_g, gC_k, sgmL_k, sgmR_k):
         if self.data.symmetry.write_gf:
             for ir in range(self.nrtot_par):
                 self.gf_out[ie_g, ir] = compute_rham(
