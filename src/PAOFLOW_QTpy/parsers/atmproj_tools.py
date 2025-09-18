@@ -1,5 +1,4 @@
 import os
-import re
 import xml.etree.ElementTree as ET
 from typing import Dict, Optional
 
@@ -14,12 +13,17 @@ from PAOFLOW_QTpy.io.log_module import (
     log_section_start,
 )
 from PAOFLOW_QTpy.io.write_data import (
-    iotk_index,
     write_intermediate_files,
 )
 from PAOFLOW_QTpy.io.write_header import headered_function
+from PAOFLOW_QTpy.parsers.atmproj_parser_base import (
+    parse_eigenvalues,
+    parse_header,
+    parse_kpoints,
+    parse_overlaps,
+    parse_projections,
+)
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
-from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 
@@ -198,89 +202,23 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     tree = ET.parse(file_proj)
     root = tree.getroot()
 
-    header = root.find("HEADER")
-    nbnd = int(header.findtext("NUMBER_OF_BANDS"))
-    nkpt = int(header.findtext("NUMBER_OF_K-POINTS"))
-    nspin = int(header.findtext("NUMBER_OF_SPIN_COMPONENTS"))
-    natomwfc = int(header.findtext("NUMBER_OF_ATOMIC_WFC"))
-    nelec = float(header.findtext("NUMBER_OF_ELECTRONS"))
-    efermi = float(header.findtext("FERMI_ENERGY"))
-    energy_units = header.find("UNITS_FOR_ENERGY").attrib["UNITS"]
-
-    kpoints = np.array(
-        [
-            [float(val) for val in line.strip().split()]
-            for line in root.find("K-POINTS").text.strip().split("\n")
-        ]
-    ).T
-    wk = np.array(
-        [float(val) for val in root.find("WEIGHT_OF_K-POINTS").text.strip().split()]
-    )
-    wk_sum = np.sum(wk)
-    wk = wk / wk_sum
-    vkpts = kpoints * 2 * np.pi / lattice_data["alat"]
-    vkpts_crystal = cartesian_to_crystal(vkpts, lattice_data["bvec"])
-
-    eigvals = np.zeros((nbnd, nkpt, nspin))
-    eig_section = root.find("EIGENVALUES")
-    for ik, kpoint in enumerate(eig_section):
-        for isp in range(nspin):
-            spin_tag = f"EIG{iotk_index(isp + 1)}" if nspin > 1 else "EIG"
-            eig_tag = kpoint.find(spin_tag) if nspin > 1 else kpoint.find("EIG")
-            eigvals[:, ik, isp] = [float(x) for x in eig_tag.text.strip().split()]
+    header = parse_header(root)
+    kpt_data = parse_kpoints(root, lattice_data)
+    eigvals = parse_eigenvalues(root, header["nbnd"], header["nkpts"], header["nspin"])
 
     log_section_end("reading eigenvalues")
 
     log_section_start("reading projections")
-    proj = np.zeros((natomwfc, nbnd, nkpt, nspin), dtype=np.complex128)
-    projections_section = root.find("PROJECTIONS")
-    for ik, kpoint in enumerate(projections_section):
-        for isp in range(nspin):
-            spin_node = (
-                kpoint.find(f"SPIN{iotk_index(isp + 1)}") if nspin == 2 else kpoint
-            )
-            for ias in range(natomwfc):
-                tag = f"ATMWFC{iotk_index(ias + 1)}"
-                for ib in range(nbnd):
-                    data = re.split(r"[\s,]+", spin_node.find(tag).text.strip())
-                    real, im = float(data[2 * ib]), float(data[2 * ib + 1])
-                    proj[ias, ib, ik, isp] = real + 1j * im
+    proj = parse_projections(
+        root, header["nbnd"], header["nkpts"], header["nspin"], header["natomwfc"]
+    )
 
     log_section_end("reading projections")
     log_section_end("atmproj_read_ext")
 
-    overlap_section = root.find("OVERLAPS")
-    overlap = None
-    if overlap_section is not None:
-        overlap = np.zeros((natomwfc, natomwfc, nkpt, nspin), dtype=np.complex128)
-        for ik, kpoint in enumerate(overlap_section):
-            for isp in range(nspin):
-                tag = f"OVERLAP{iotk_index(isp + 1)}"
-                data = re.split(r"[\s,]+", kpoint.find(tag).text.strip())
-                matrix = np.array(
-                    [
-                        complex(float(data[i]), float(data[i + 1]))
-                        for i in range(0, len(data), 2)
-                    ]
-                )
-                overlap[:, :, ik, isp] = matrix.reshape(natomwfc, natomwfc)
+    overlap = parse_overlaps(root, header["nkpts"], header["nspin"], header["natomwfc"])
 
-    return {
-        "nbnd": nbnd,
-        "nkpts": nkpt,
-        "nspin": nspin,
-        "natomwfc": natomwfc,
-        "nelec": nelec,
-        "efermi": efermi,
-        "energy_units": energy_units,
-        "kpts": kpoints,
-        "vkpts_cartesian": vkpts,
-        "vkpts_crystal": vkpts_crystal,
-        "wk": wk,
-        "eigvals": eigvals,
-        "proj": proj,
-        "overlap": overlap,
-    }
+    return {**header, **kpt_data, "eigvals": eigvals, "proj": proj, "overlap": overlap}
 
 
 def build_hamiltonian_from_proj(
