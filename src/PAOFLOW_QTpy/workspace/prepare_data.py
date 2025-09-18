@@ -10,7 +10,7 @@ from PAOFLOW_QTpy.hamiltonian.hamiltonian_init import (
     initialize_hamiltonian_blocks,
 )
 from PAOFLOW_QTpy.io.get_input_params import load_conductor_data_from_yaml
-from PAOFLOW_QTpy.io.startup import startup
+from PAOFLOW_QTpy.io.log_module import log_startup
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.io.input_parameters import ConductorData, RuntimeData
@@ -50,7 +50,7 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
     do_orthoovp = data.atomic_proj.do_orthoovp
     nproc = MPI.COMM_WORLD.Get_size()
 
-    startup("conductor.py")
+    log_startup("conductor.py")
     hk_data = parse_atomic_proj(
         file_proj=data.file_names.datafile_C,
         work_dir=work_dir,
