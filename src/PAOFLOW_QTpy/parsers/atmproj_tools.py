@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from typing import Optional, Dict
 from scipy.linalg import eigh, inv
 
-from PAOFLOW_QTpy.grid.get_rgrid import grids_get_rgrid
+from PAOFLOW_QTpy.grid.rgrid import get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
 from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
@@ -139,7 +139,7 @@ def parse_atomic_proj(
 
     nk = np.array([1, 1, 4], dtype=int)  # TODO: confirm this hardcoded grid
     nr = nk
-    ivr, wr = grids_get_rgrid(nr)
+    ivr, wr = get_rgrid(nr)
 
     hk_data.update({"ivr": ivr, "wr": wr, "nk": nk, "nr": nr})
 

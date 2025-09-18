@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 
-def grids_get_rgrid(
+def get_rgrid(
     mesh_dims: Tuple[int, int, int],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
