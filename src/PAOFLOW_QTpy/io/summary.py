@@ -96,8 +96,8 @@ def print_summary(data: ConductorData) -> None:
     runtime = data.get_runtime_data()
     if runtime is not None:
         log_rank0("  <K-POINTS>")
-        log_rank0(f"       nkpts_par = {runtime.nk_par}")
-        log_rank0(f"       nrtot_par = {runtime.nr_par3d}")
+        log_rank0(f"       nkpts_par = {runtime.nkpts_par}")
+        log_rank0(f"       nrtot_par = {runtime.nrtot_par}")
         log_rank0(f"        use_sym = {data.symmetry.use_sym}")
 
         nk_par3d = runtime.nk_par3d
