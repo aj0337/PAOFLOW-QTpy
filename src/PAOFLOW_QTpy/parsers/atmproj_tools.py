@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 import numpy as np
@@ -308,71 +309,119 @@ def build_hamiltonian_from_proj(
     nspin = proj_data["nspin"]
     natomwfc = proj_data["natomwfc"]
 
+    opts = HamiltonianOptions(
+        sh=atmproj_sh,
+        thr=atmproj_thr,
+        nbnd=atmproj_nbnd,
+        do_norm=atmproj_do_norm,
+        do_orthoovp=do_orthoovp,
+        shifting_scheme=shifting_scheme,
+    )
+
     atmproj_nbnd_ = (
         min(atmproj_nbnd, nbnd) if atmproj_nbnd and atmproj_nbnd > 0 else nbnd
     )
     Hk = np.zeros((nspin, nkpts, natomwfc, natomwfc), dtype=np.complex128)
-    Sk = S_raw.copy() if not do_orthoovp and S_raw is not None else None
+    Sk = S_raw.copy() if not opts.do_orthoovp and S_raw is not None else None
 
     for isp in range(nspin):
         for ik in range(nkpts):
-            if shifting_scheme == 2:
-                mask = [ib for ib in range(nbnd) if eig[ib, ik, isp] < atmproj_sh]
-                if not mask:
-                    raise RuntimeError(f"No eigenvalues below shift at ik = {ik}")
-
-                E = np.diag(eig[mask, ik, isp])
-                A = proj[:, mask, ik, isp].copy()
-
-                if atmproj_do_norm:
-                    for ib in range(A.shape[1]):
-                        norm = np.vdot(A[:, ib], A[:, ib]).real
-                        A[:, ib] /= np.sqrt(norm)
-
-                PA = A.conj().T @ A
-                IPA = inv(PA)
-                H_aux = (E - atmproj_sh * IPA) @ A.conj().T
-                Hk[isp, ik] = A @ H_aux
-
-                Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
-
+            if opts.shifting_scheme == 2:
+                H = build_scheme2(eig, proj, ik, isp, opts, natomwfc)
             else:
-                for ib in range(atmproj_nbnd_):
-                    if atmproj_thr > 0.0:
-                        proj_b = proj[:, ib, ik, isp]
-                        weight = np.vdot(proj_b, proj_b).real
-                        if eig[ib, ik, isp] > atmproj_sh:
-                            continue
-                    else:
-                        if eig[ib, ik, isp] >= atmproj_sh:
-                            continue
-                        proj_b = proj[:, ib, ik, isp]
-                        weight = np.vdot(proj_b, proj_b).real
+                H = build_scheme1(eig, proj, ik, isp, opts, atmproj_nbnd_, natomwfc)
 
-                    if atmproj_do_norm:
-                        proj_b /= np.sqrt(weight)
+            if not opts.do_orthoovp and S_raw is not None:
+                H = apply_overlap_transformation(H, S_raw[:, :, ik, isp])
 
-                    Hk[isp, ik] += (eig[ib, ik, isp] - atmproj_sh) * np.outer(
-                        proj_b, proj_b.conj()
-                    )
-                Hk[isp, ik] = 0.5 * (Hk[isp, ik] + Hk[isp, ik].conj().T)
-
-            if not do_orthoovp and S_raw is not None:
-                S = S_raw[:, :, ik, isp]
-                w, U = eigh(S)
-                if np.any(w <= 0):
-                    raise ValueError(
-                        f"Negative or zero overlap eigenvalue at ik={ik}, isp={isp}"
-                    )
-                sqrtS = U @ np.diag(np.sqrt(w)) @ U.conj().T
-                Hk[isp, ik] = sqrtS @ Hk[isp, ik] @ sqrtS.conj().T
-
-            if not do_orthoovp and S_raw is not None:
-                Hk[isp, ik] += atmproj_sh * S_raw[:, :, ik, isp]
+            if not opts.do_orthoovp and S_raw is not None:
+                H += opts.sh * S_raw[:, :, ik, isp]
             else:
-                Hk[isp, ik] += atmproj_sh * np.eye(natomwfc, dtype=np.complex128)
+                H += opts.sh * np.eye(natomwfc, dtype=np.complex128)
 
-            if not np.allclose(Hk[isp, ik], Hk[isp, ik].conj().T, atol=1e-8):
-                raise ValueError(f"Hk not Hermitian at ik={ik}, isp={isp}")
+            enforce_hermiticity(H, opts.hermitian_tol, ik, isp)
+            Hk[isp, ik] = H
 
     return {"Hk": Hk, "S": Sk}
+
+
+@dataclass
+class HamiltonianOptions:
+    sh: float
+    thr: float
+    nbnd: Optional[int]
+    do_norm: bool
+    do_orthoovp: bool
+    shifting_scheme: int = 1
+    hermitian_tol: float = 1e-8
+
+
+def build_scheme1(
+    eig: np.ndarray,
+    proj: np.ndarray,
+    ik: int,
+    isp: int,
+    opts: HamiltonianOptions,
+    atmproj_nbnd_: int,
+    natomwfc: int,
+) -> np.ndarray:
+    H = np.zeros((natomwfc, natomwfc), dtype=np.complex128)
+    for ib in range(atmproj_nbnd_):
+        energy = eig[ib, ik, isp]
+        if opts.thr > 0.0:
+            proj_b = proj[:, ib, ik, isp]
+            weight = np.vdot(proj_b, proj_b).real
+            if energy > opts.sh or weight < opts.thr:
+                continue
+        else:
+            if energy >= opts.sh:
+                continue
+            proj_b = proj[:, ib, ik, isp]
+            weight = np.vdot(proj_b, proj_b).real
+
+        if opts.do_norm and weight > 1e-14:
+            proj_b /= np.sqrt(weight)
+
+        H += (energy - opts.sh) * np.outer(proj_b, proj_b.conj())
+    return 0.5 * (H + H.conj().T)
+
+
+def build_scheme2(
+    eig: np.ndarray,
+    proj: np.ndarray,
+    ik: int,
+    isp: int,
+    opts: HamiltonianOptions,
+    natomwfc: int,
+) -> np.ndarray:
+    mask = [ib for ib in range(eig.shape[0]) if eig[ib, ik, isp] < opts.sh]
+    if not mask:
+        raise RuntimeError(f"No eigenvalues below shift at ik={ik}")
+
+    E = np.diag(eig[mask, ik, isp])
+    A = proj[:, mask, ik, isp].copy()
+
+    if opts.do_norm:
+        for ib in range(A.shape[1]):
+            norm = np.vdot(A[:, ib], A[:, ib]).real
+            if norm > 1e-14:
+                A[:, ib] /= np.sqrt(norm)
+
+    PA = A.conj().T @ A
+    IPA = inv(PA)
+    H_aux = (E - opts.sh * IPA) @ A.conj().T
+    H = A @ H_aux
+    return 0.5 * (H + H.conj().T)
+
+
+def apply_overlap_transformation(H: np.ndarray, S: np.ndarray) -> np.ndarray:
+    w, U = eigh(S)
+    if np.any(w <= 0):
+        raise ValueError("Negative or zero overlap eigenvalue")
+    sqrtS = U @ np.diag(np.sqrt(w)) @ U.conj().T
+    return sqrtS @ H @ sqrtS.conj().T
+
+
+def enforce_hermiticity(H: np.ndarray, tol: float, ik: int, isp: int) -> None:
+    if not np.allclose(H, H.conj().T, atol=tol):
+        raise ValueError(f"H(k) not Hermitian at ik={ik}, isp={isp}")
