@@ -7,7 +7,7 @@ import numpy as np
 from scipy.linalg import eigh, inv
 
 from PAOFLOW_QTpy.grid.rgrid import get_rgrid
-from PAOFLOW_QTpy.io.input_parameters import ConductorData
+from PAOFLOW_QTpy.io.input_parameters import AtomicProjData, ConductorData
 from PAOFLOW_QTpy.io.log_module import (
     log_proj_data,
     log_rank0,
@@ -41,11 +41,11 @@ def validate_proj_files(file_proj: str) -> str:
     return file_data
 
 
-def convert_energy_units(proj_data: Dict) -> Dict:
-    proj_data["eigvals_raw"] = proj_data["eigvals"]
-    proj_data["efermi_raw"] = proj_data["efermi"]
+def convert_energy_units(proj_data: AtomicProjData) -> AtomicProjData:
+    eigvals_raw = proj_data.eigvals.copy()
+    efermi_raw = proj_data.efermi
 
-    unit = proj_data["energy_units"].lower()
+    unit = proj_data.energy_units.lower()
     factors = {
         "ha": 27.211386018,
         "hartree": 27.211386018,
@@ -60,13 +60,18 @@ def convert_energy_units(proj_data: Dict) -> Dict:
         raise ValueError(f"Unknown energy unit: {unit}")
     factor = factors[unit]
 
-    proj_data["efermi"] = proj_data["efermi_raw"] * factor
-    proj_data["eigvals"] = proj_data["eigvals_raw"] * factor - proj_data["efermi"]
-    return proj_data
+    return proj_data.model_copy(
+        update={
+            "eigvals_raw": eigvals_raw,
+            "efermi_raw": efermi_raw,
+            "eigvals": eigvals_raw * factor - efermi_raw * factor,
+            "efermi": efermi_raw * factor,
+        }
+    )
 
 
-def log_proj_summary(proj_data: Dict, **kwargs) -> None:
-    for line in log_proj_data(proj_data, **kwargs):
+def log_proj_summary(proj_data: AtomicProjData, data: ConductorData) -> None:
+    for line in log_proj_data(proj_data, data):
         log_rank0(line)
 
 
@@ -88,11 +93,7 @@ def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
 
     log_proj_summary(
         proj_data,
-        atmproj_sh=opts.atmproj_sh,
-        atmproj_thr=opts.atmproj_thr,
-        atmproj_nbnd=opts.atmproj_nbnd,
-        atmproj_do_norm=opts.do_orthoovp,
-        do_orthoovp=opts.do_orthoovp,
+        data,
     )
 
     log_section_start("atmproj_read_ext --massive data")
@@ -122,7 +123,7 @@ def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
     return hk_data
 
 
-def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
+def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> AtomicProjData:
     """
     Parse the Quantum ESPRESSO atomic_proj.xml file (from projwfc.x) into structured NumPy arrays.
 
@@ -214,11 +215,17 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
 
     overlap = parse_overlaps(root, header["nkpts"], header["nspin"], header["natomwfc"])
 
-    return {**header, **kpt_data, "eigvals": eigvals, "proj": proj, "overlap": overlap}
+    return AtomicProjData(
+        **header,
+        **kpt_data,
+        eigvals=eigvals,
+        proj=proj,
+        overlap=overlap,
+    )
 
 
 def build_hamiltonian_from_proj(
-    proj_data: Dict,
+    proj_data: AtomicProjData,
     data: ConductorData,
 ) -> Dict[str, np.ndarray]:
     """
@@ -290,14 +297,14 @@ def build_hamiltonian_from_proj(
         H(k) -> S(k)½ · H(k) · S(k)½
     where S(k)½ is the square root of the overlap matrix.
     """
-    eig = proj_data["eigvals"]
-    proj = proj_data["proj"]
-    S_raw = proj_data["overlap"]
+    eig = proj_data.eigvals
+    proj = proj_data.proj
+    S_raw = proj_data.overlap
 
-    nbnd = proj_data["nbnd"]
-    nkpts = proj_data["nkpts"]
-    nspin = proj_data["nspin"]
-    natomwfc = proj_data["natomwfc"]
+    nbnd = proj_data.nbnd
+    nkpts = proj_data.nkpts
+    nspin = proj_data.nspin
+    natomwfc = proj_data.natomwfc
 
     opts = HamiltonianOptions(
         sh=data.atomic_proj.atmproj_sh,
@@ -354,11 +361,11 @@ def build_scheme1(
     ik: int,
     isp: int,
     opts: HamiltonianOptions,
-    atmproj_nbnd_: int,
+    atmproj_nbnd: int,
     natomwfc: int,
 ) -> np.ndarray:
     H = np.zeros((natomwfc, natomwfc), dtype=np.complex128)
-    for ib in range(atmproj_nbnd_):
+    for ib in range(atmproj_nbnd):
         energy = eig[ib, ik, isp]
         if opts.thr > 0.0:
             proj_b = proj[:, ib, ik, isp]

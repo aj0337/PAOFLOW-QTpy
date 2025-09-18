@@ -7,6 +7,7 @@ from typing import Dict, Optional
 import numpy.typing as npt
 
 from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
+from PAOFLOW_QTpy.io.input_parameters import AtomicProjData
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
 from PAOFLOW_QTpy.io.log_module import log_rank0
 
@@ -195,7 +196,7 @@ def iotk_index(n: int) -> str:
 def write_internal_format_files(
     output_prefix: str,
     hk_data: Dict[str, np.ndarray],
-    proj_data: Dict[str, np.ndarray],
+    proj_data: AtomicProjData,
     lattice_data: Dict[str, np.ndarray],
     do_orthoovp: bool,
 ) -> None:
@@ -240,10 +241,10 @@ def write_internal_format_files(
 
     avec = lattice_data["avec"]
     bvec = lattice_data["bvec"]
-    kpts = proj_data["kpts"]
-    vkpts_crystal = proj_data["vkpts_crystal"]
-    vkpts_cartesian = proj_data["vkpts_cartesian"]
-    wk = proj_data["wk"]
+    kpts = proj_data.kpts
+    vkpts_crystal = proj_data.vkpts_crystal
+    vkpts_cartesian = proj_data.vkpts_cartesian
+    wk = proj_data.wk
     spin_component = "all"
     shift = np.zeros(3, dtype=float)  # No shift in k-point grid for crystal coordinates
     nspin, _, dim, _ = Hk.shape
@@ -582,12 +583,12 @@ def write_kresolved_operator_xml(
 
 
 def write_projectability_files(
-    output_dir: str, proj_data: Dict, Hk: np.ndarray
+    output_dir: str, proj_data: AtomicProjData, Hk: np.ndarray
 ) -> None:
-    proj = proj_data["proj"]
-    eigvals = proj_data["eigvals"]
-    nspin, nkpts, natomwfc, _ = Hk.shape
-    nbnd = proj.shape[1]
+    proj = proj_data.proj
+    eigvals = proj_data.eigvals
+    nspin, nkpts, _, _ = Hk.shape
+    nbnd = proj_data.nbnd
 
     for isp in range(nspin):
         proj_file = (
@@ -629,7 +630,7 @@ def write_intermediate_files(
     prefix: str,
     postfix: str,
     hk_data: Dict,
-    proj_data: Dict,
+    proj_data: AtomicProjData,
     lattice_data: Dict,
     do_orthoovp: bool,
 ) -> None:

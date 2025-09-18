@@ -1,17 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Dict,
-    List,
     Literal,
-    Optional,
 )
 
 import numpy as np
-from pydantic import (
-    BaseModel as PydanticBaseModel,
-)
+import numpy.typing as npt
 from pydantic import (
     NonNegativeFloat,
     NonNegativeInt,
@@ -20,6 +17,9 @@ from pydantic import (
     confloat,
     conint,
     field_validator,
+)
+from pydantic import (
+    BaseModel as PydanticBaseModel,
 )
 from typing_extensions import Annotated
 from yaml import SafeLoader, load
@@ -79,31 +79,31 @@ class FileNamesData(PydanticBaseModel):
 
 
 class HamiltonianData(PydanticBaseModel):
-    H00_C: Optional[Dict[str, Any]] = None
-    H_CR: Optional[Dict[str, Any]] = None
-    H_LC: Optional[Dict[str, Any]] = None
-    H00_L: Optional[Dict[str, Any]] = None
-    H01_L: Optional[Dict[str, Any]] = None
-    H00_R: Optional[Dict[str, Any]] = None
-    H01_R: Optional[Dict[str, Any]] = None
+    H00_C: dict[str, Any] | None = None
+    H_CR: dict[str, Any] | None = None
+    H_LC: dict[str, Any] | None = None
+    H00_L: dict[str, Any] | None = None
+    H01_L: dict[str, Any] | None = None
+    H00_R: dict[str, Any] | None = None
+    H01_R: dict[str, Any] | None = None
 
 
 class KPointGridSettings(PydanticBaseModel):
-    nk: List[NonNegativeInt] = [0, 0]
-    s: List[NonNegativeInt] = [0, 0]
+    nk: list[NonNegativeInt] = [0, 0]
+    s: list[NonNegativeInt] = [0, 0]
     nkpts_par: NonNegativeInt = 1
     nrtot_par: NonNegativeInt = 1
 
     @field_validator("nk")
     @classmethod
-    def check_nk(cls, value: List[int]) -> List[int]:
+    def check_nk(cls, value: list[int]) -> list[int]:
         if any(v < 0 for v in value):
             raise ValueError("Invalid nk: all values must be non-negative")
         return value
 
     @field_validator("s")
     @classmethod
-    def check_s(cls, value: List[int]) -> List[int]:
+    def check_s(cls, value: list[int]) -> list[int]:
         if any(v < 0 or v > 1 for v in value):
             raise ValueError("Invalid s: all values must be 0 or 1")
         return value
@@ -242,6 +242,62 @@ class AtomicProjectionOverlapSettings(PydanticBaseModel):
         if value < 0.0:
             raise ValueError("invalid atmproj_nbnd")
         return value
+
+
+class AtomicProjData(PydanticBaseModel):
+    """
+    Parsed atomic projection data from Quantum ESPRESSO's `atomic_proj.xml`.
+
+    Attributes
+    ----------
+    nbnd : int
+        Number of bands.
+    nkpts : int
+        Number of k-points.
+    nspin : int
+        Number of spin components (1 = non-magnetic, 2 = collinear magnetic).
+    natomwfc : int
+        Number of atomic wavefunctions (projectors).
+    nelec : float
+        Total number of electrons.
+    efermi : float
+        Fermi energy, in units specified by `energy_units`.
+    energy_units : str
+        Energy units reported in XML (e.g. 'eV', 'Ha', 'Ry').
+    kpts : (3, nkpts) ndarray of float
+        K-point coordinates in crystal units.
+    wk : (nkpts,) ndarray of float
+        K-point weights.
+    eigvals : (nbnd, nkpts, nspin) ndarray of float
+        Band eigenvalues at each k-point and spin.
+    proj : (natomwfc, nbnd, nkpts, nspin) ndarray of complex
+        Projection matrix elements ⟨atomic_wfc | Bloch_state⟩.
+    overlap : (natomwfc, natomwfc, nkpts, nspin) ndarray of complex, optional
+        Overlap matrices S_ij(k) = ⟨atomic_wfc_i | atomic_wfc_j⟩ if present.
+    """
+
+    nbnd: int
+    nkpts: int
+    nspin: int
+    natomwfc: int
+    nelec: float
+    efermi: float
+    energy_units: str
+
+    kpts: npt.NDArray[np.float64]
+    wk: npt.NDArray[np.float64]
+    eigvals: npt.NDArray[np.float64]
+    proj: npt.NDArray[np.complex128]
+    overlap: npt.NDArray[np.complex128] | None = None
+
+    vkpts_crystal: npt.NDArray[np.float64] | None = None
+    vkpts_cartesian: npt.NDArray[np.float64] | None = None
+
+    efermi_raw: float | None = None
+    eigvals_raw: npt.NDArray[np.float64] | None = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class AdvancedSettings(PydanticBaseModel):
@@ -451,7 +507,7 @@ class CurrentData(PydanticBaseModel):
         if validate:
             self.validate_input()
 
-    def read(self, filename: str) -> Dict[str, Any]:
+    def read(self, filename: str) -> dict[str, Any]:
         with open(Path(filename).absolute()) as f:
             return load(f, SafeLoader)
 
