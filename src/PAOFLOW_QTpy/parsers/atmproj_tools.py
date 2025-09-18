@@ -9,7 +9,12 @@ from PAOFLOW_QTpy.grid.get_rgrid import grids_get_rgrid
 from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
 from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
-from PAOFLOW_QTpy.io.log_module import log_rank0
+from PAOFLOW_QTpy.io.log_module import (
+    log_rank0,
+    log_proj_data,
+    log_section_start,
+    log_section_end,
+)
 from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
 
 from PAOFLOW_QTpy.utils.timing import timed_function
@@ -91,52 +96,35 @@ def parse_atomic_proj(
     log_rank0(f"  {file_proj} file fmt: atmproj")
 
     lattice_data = qexml_read_cell(file_data)
+    proj_data = parse_atomic_proj_xml(file_proj, lattice_data)
 
-    # --- Begin reading header info ---
-    proj_data = parse_atomic_proj_xml(
-        file_proj, lattice_data
-    )  # Reads eigvals, proj, overlap
-
-    # Preserve raw (QE) eigenvalues and Fermi energy
     proj_data["eigvals_raw"] = proj_data["eigvals"]
     proj_data["efermi_raw"] = proj_data["efermi"]
 
-    # Determine conversion factor to eV
     energy_units = proj_data["energy_units"].lower()
     if energy_units in ("ha", "hartree", "au"):
-        factor = 2 * 13.605693009  # Ha to eV
+        factor = 2 * 13.605693009
     elif energy_units in ("ry", "ryd", "rydberg"):
-        factor = 13.605693009  # Ry to eV
+        factor = 13.605693009
     elif energy_units in ("ev", "electronvolt"):
         factor = 1.0
     else:
         raise ValueError(f"Unknown energy unit: {energy_units}")
 
-    # Apply conversion and shift eigenvalues
     proj_data["efermi"] = proj_data["efermi_raw"] * factor
     proj_data["eigvals"] = proj_data["eigvals_raw"] * factor - proj_data["efermi"]
 
-    log_rank0("  Dimensions found in atomic_proj.{dat,xml}:")
-    log_rank0(f"    nbnd     : {proj_data['nbnd']:>5}")
-    log_rank0(f"    nkpts    : {proj_data['nkpts']:>5}")
-    log_rank0(f"    nspin    : {proj_data['nspin']:>5}")
-    log_rank0(f"    natomwfc : {proj_data['natomwfc']:>5}")
-    log_rank0(f"    nelec    : {proj_data['nelec']:>12.6f}")
-    log_rank0(f"    efermi   : {proj_data['efermi_raw']:>12.6f}")
-    log_rank0(f"    energy_units :  {proj_data['energy_units']}   ")
-    log_rank0("")
-    log_rank0("  ATMPROJ conversion to be done using:")
-    log_rank0(
-        f"    atmproj_nbnd : {atmproj_nbnd if atmproj_nbnd is not None else proj_data['nbnd']:>5}"
-    )
-    log_rank0(f"    atmproj_thr  : {atmproj_thr:>12.6f}")
-    log_rank0(f"    atmproj_sh   : {atmproj_sh:>12.6f}")
-    log_rank0(f"    atmproj_do_norm:  {atmproj_do_norm}")
-    # --- Begin main data read ---
-    log_rank0("Begins atmproj_read_ext --massive data")
-    if do_orthoovp:
-        log_rank0("Using an orthogonal basis. do_orthoovp=.true.")
+    for line in log_proj_data(
+        proj_data,
+        atmproj_sh=atmproj_sh,
+        atmproj_thr=atmproj_thr,
+        atmproj_nbnd=atmproj_nbnd,
+        atmproj_do_norm=atmproj_do_norm,
+        do_orthoovp=do_orthoovp,
+    ):
+        log_rank0(line)
 
+    log_section_start("atmproj_read_ext --massive data")
     hk_data = build_hamiltonian_from_proj(
         proj_data,
         atmproj_sh=atmproj_sh,
@@ -144,26 +132,22 @@ def parse_atomic_proj(
         atmproj_nbnd=atmproj_nbnd,
         do_orthoovp=do_orthoovp,
     )
-    log_rank0("Ends atmproj_read_ext --massive data")
+    log_section_end("atmproj_read_ext --massive data")
 
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
 
-    nk = np.zeros(3, dtype=int)
-    nk[0], nk[1], nk[2] = 1, 1, 4  # TODO : Why is this hardcoded?
+    nk = np.array([1, 1, 4], dtype=int)  # TODO: confirm this hardcoded grid
     nr = nk
     ivr, wr = grids_get_rgrid(nr)
 
-    hk_data["ivr"] = ivr
-    hk_data["wr"] = wr
-    hk_data["nk"] = nk
-    hk_data["nr"] = nr
+    hk_data.update({"ivr": ivr, "wr": wr, "nk": nk, "nr": nr})
 
     if write_intermediate:
         output_dir = os.path.join(work_dir, "output")
         os.makedirs(output_dir, exist_ok=True)
-
         output_prefix = os.path.join(output_dir, prefix + postfix)
+
         write_internal_format_files(
             output_prefix, hk_data, proj_data, lattice_data, do_orthoovp
         )
@@ -172,18 +156,15 @@ def parse_atomic_proj(
 
         proj = proj_data["proj"]
         eigvals = proj_data["eigvals"]
-
         nspin, nkpts, natomwfc, _ = Hk.shape
         nbnd = proj.shape[1]
 
         for isp in range(nspin):
-            if nspin == 2:
-                proj_file = os.path.join(
-                    output_dir, f"projectability_{['up', 'dn'][isp]}.txt"
-                )
-            else:
-                proj_file = os.path.join(output_dir, "projectability.txt")
-
+            proj_file = (
+                os.path.join(output_dir, f"projectability_{['up', 'dn'][isp]}.txt")
+                if nspin == 2
+                else os.path.join(output_dir, "projectability.txt")
+            )
             with open(proj_file, "w") as f:
                 f.write("# Energy (eV)        Projectability\n")
                 for ik in range(nkpts):
@@ -258,8 +239,7 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
 
     Notes
     -----
-    The function replicates the logic of the Fortran `atmproj_read_ext` routine from the PAOFLOW transport code,
-    faithfully reproducing the Fortran logging flow:
+    The function performs the following steps:
     - Logs the start of eigenvalue and projection parsing.
     - Reads XML sections: HEADER, K-POINTS, WEIGHT_OF_K-POINTS, EIGENVALUES, PROJECTIONS, and optional OVERLAPS.
     - Supports both single and spin-polarized cases (1 or 2 spin channels).
@@ -282,13 +262,12 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     - OVERLAPS block if present.
     """
 
-    log_rank0("Begins atmproj_read_ext")
-    log_rank0("Begins reading eigenvalues")
+    log_section_start("Begins atmproj_read_ext")
+    log_section_start("Begins reading eigenvalues")
 
     tree = ET.parse(file_proj)
     root = tree.getroot()
 
-    # Read header information
     header = root.find("HEADER")
     nbnd = int(header.findtext("NUMBER_OF_BANDS"))
     nkpt = int(header.findtext("NUMBER_OF_K-POINTS"))
@@ -298,7 +277,6 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     efermi = float(header.findtext("FERMI_ENERGY"))
     energy_units = header.find("UNITS_FOR_ENERGY").attrib["UNITS"]
 
-    # Read kpoints and weights (if present)
     kpoints = np.array(
         [
             [float(val) for val in line.strip().split()]
@@ -311,11 +289,8 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     wk_sum = np.sum(wk)
     wk = wk / wk_sum
     vkpts = kpoints * 2 * np.pi / lattice_data["alat"]
-    vkpts_crystal = cartesian_to_crystal(
-        vkpts, lattice_data["bvec"]
-    )  # convert to crystal coordinates
+    vkpts_crystal = cartesian_to_crystal(vkpts, lattice_data["bvec"])
 
-    # === Eigenvalues ===
     eigvals = np.zeros((nbnd, nkpt, nspin))
     eig_section = root.find("EIGENVALUES")
     for ik, kpoint in enumerate(eig_section):
@@ -324,10 +299,9 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
             eig_tag = kpoint.find(spin_tag) if nspin > 1 else kpoint.find("EIG")
             eigvals[:, ik, isp] = [float(x) for x in eig_tag.text.strip().split()]
 
-    log_rank0("Finished reading eigenvalues")
+    log_section_end("Finished reading eigenvalues")
 
-    # === Projections ===
-    log_rank0("Begins reading projections")
+    log_section_start("Begins reading projections")
     proj = np.zeros((natomwfc, nbnd, nkpt, nspin), dtype=np.complex128)
     projections_section = root.find("PROJECTIONS")
     for ik, kpoint in enumerate(projections_section):
@@ -342,10 +316,9 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
                     real, im = float(data[2 * ib]), float(data[2 * ib + 1])
                     proj[ias, ib, ik, isp] = real + 1j * im
 
-    log_rank0("Ends reading projections")
-    log_rank0("Ends atmproj_read_ext")
+    log_section_end("Ends reading projections")
+    log_section_end("Ends atmproj_read_ext")
 
-    # === Overlap ===
     overlap_section = root.find("OVERLAPS")
     overlap = None
     if overlap_section is not None:
