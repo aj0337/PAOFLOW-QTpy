@@ -1,18 +1,17 @@
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
     Any,
-    List,
     Dict,
-    Optional,
+    List,
     Literal,
+    Optional,
 )
 
-from typing_extensions import Annotated
-from pathlib import Path
-from yaml import load, SafeLoader
 import numpy as np
-from dataclasses import dataclass
-from PAOFLOW_QTpy.utils.constants import rydcm1, amconv
-
+from pydantic import (
+    BaseModel as PydanticBaseModel,
+)
 from pydantic import (
     NonNegativeFloat,
     NonNegativeInt,
@@ -20,9 +19,12 @@ from pydantic import (
     PrivateAttr,
     confloat,
     conint,
-    BaseModel as PydanticBaseModel,
     field_validator,
 )
+from typing_extensions import Annotated
+from yaml import SafeLoader, load
+
+from PAOFLOW_QTpy.utils.constants import amconv, rydcm1
 
 CalculationType = Literal[
     "conductor",
@@ -224,6 +226,8 @@ class AtomicProjectionOverlapSettings(PydanticBaseModel):
     atmproj_sh: NonNegativeFloat = 5.0
     atmproj_thr: Annotated[NonNegativeFloat, confloat(ge=0.0, le=1.0)] = 0.9
     atmproj_nbnd: NonNegativeInt = 0
+    atmproj_do_norm: bool = False
+    write_intermediate: bool = True
 
     @field_validator("atmproj_thr")
     @classmethod

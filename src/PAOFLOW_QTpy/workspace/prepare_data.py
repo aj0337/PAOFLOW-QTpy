@@ -45,21 +45,10 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
 
     prefix = os.path.basename(data.file_names.datafile_C)
     work_dir = data.file_names.work_dir
-    atmproj_sh = data.atomic_proj.atmproj_sh
-    atmproj_thr = data.atomic_proj.atmproj_thr
-    do_orthoovp = data.atomic_proj.do_orthoovp
     nproc = MPI.COMM_WORLD.Get_size()
 
     log_startup("conductor.py")
-    hk_data = parse_atomic_proj(
-        file_proj=data.file_names.datafile_C,
-        work_dir=work_dir,
-        prefix=prefix,
-        atmproj_sh=atmproj_sh,
-        atmproj_thr=atmproj_thr,
-        do_orthoovp=do_orthoovp,
-        write_intermediate=True,
-    )
+    hk_data = parse_atomic_proj(data)
 
     nk_par, nr_par = initialize_meshsize(
         nr_full=hk_data["nr"], transport_direction=data.transport_direction

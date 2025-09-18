@@ -71,20 +71,13 @@ def log_proj_summary(proj_data: Dict, **kwargs) -> None:
 
 @timed_function("atmproj_to_internal")
 @headered_function("Conductor Initialization")
-def parse_atomic_proj(
-    *,
-    input_dict: Optional[Dict] = None,
-    file_proj: str,
-    work_dir: str,
-    prefix: str = "",
-    postfix: str = "",
-    atmproj_sh: float = 10.0,
-    atmproj_thr: float = 0.0,
-    atmproj_nbnd: Optional[int] = None,
-    atmproj_do_norm: bool = False,
-    do_orthoovp: bool = True,
-    write_intermediate: bool = True,
-) -> Dict[str, np.ndarray]:
+def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
+    file_proj = data.file_names.datafile_C
+    work_dir = data.file_names.work_dir
+    prefix = data.file_names.prefix
+    postfix = data.file_names.postfix
+    opts = data.atomic_proj
+
     file_data = validate_proj_files(file_proj)
     log_rank0(f"  {file_proj} file fmt: atmproj")
 
@@ -94,29 +87,29 @@ def parse_atomic_proj(
 
     log_proj_summary(
         proj_data,
-        atmproj_sh=atmproj_sh,
-        atmproj_thr=atmproj_thr,
-        atmproj_nbnd=atmproj_nbnd,
-        atmproj_do_norm=atmproj_do_norm,
-        do_orthoovp=do_orthoovp,
+        atmproj_sh=opts.atmproj_sh,
+        atmproj_thr=opts.atmproj_thr,
+        atmproj_nbnd=opts.atmproj_nbnd,
+        atmproj_do_norm=opts.do_orthoovp,
+        do_orthoovp=opts.do_orthoovp,
     )
 
     log_section_start("atmproj_read_ext --massive data")
     hk_data = build_hamiltonian_from_proj(
         proj_data,
-        atmproj_sh=atmproj_sh,
-        atmproj_thr=atmproj_thr,
-        atmproj_nbnd=atmproj_nbnd,
-        do_orthoovp=do_orthoovp,
+        atmproj_sh=opts.atmproj_sh,
+        atmproj_thr=opts.atmproj_thr,
+        atmproj_nbnd=opts.atmproj_nbnd,
+        do_orthoovp=opts.do_orthoovp,
     )
     log_section_end("atmproj_read_ext --massive data")
 
-    nk = np.array([1, 1, 4], dtype=int)  # TODO: confirm this hardcoded grid
+    nk = np.array([1, 1, 4], dtype=int)  # TODO: confirm hardcoded grid
     nr = nk
     ivr, wr = get_rgrid(nr)
     hk_data.update({"ivr": ivr, "wr": wr, "nk": nk, "nr": nr})
 
-    if write_intermediate:
+    if opts.write_intermediate:
         write_intermediate_files(
             file_proj,
             work_dir,
@@ -125,7 +118,7 @@ def parse_atomic_proj(
             hk_data,
             proj_data,
             lattice_data,
-            do_orthoovp,
+            opts.do_orthoovp,
         )
 
     return hk_data
