@@ -1,17 +1,14 @@
 import numpy as np
+import os
 from pathlib import Path
 
 from typing import Dict, Optional
 
-
-import logging
 import numpy.typing as npt
 
 from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.utils.converters import crystal_to_cartesian
-
-
-logger = logging.getLogger(__name__)
+from PAOFLOW_QTpy.io.log_module import log_rank0
 
 
 def write_dos_and_conductance(
@@ -527,21 +524,6 @@ def write_operator_xml(
             f.write("</OPERATOR>\n")
 
 
-def complex_matrix_to_text(matrix: np.ndarray) -> str:
-    """Convert complex matrix to text format matching Fortran output."""
-    rows, cols = matrix.shape
-    lines = []
-
-    for i in range(rows):
-        row_parts = []
-        for j in range(cols):
-            val = matrix[i, j]
-            row_parts.append(f"{val.real:18.15E},{val.imag:18.15E}")
-        lines.append("      " + " ".join(row_parts))
-
-    return "\n" + "\n".join(lines) + "\n    "
-
-
 def write_kresolved_operator_xml(
     filename: str,
     operator_k: np.ndarray,
@@ -597,3 +579,68 @@ def write_kresolved_operator_xml(
         nomega=1,
         nrtot=nk,
     )
+
+
+def write_projectability_files(
+    output_dir: str, proj_data: Dict, Hk: np.ndarray
+) -> None:
+    proj = proj_data["proj"]
+    eigvals = proj_data["eigvals"]
+    nspin, nkpts, natomwfc, _ = Hk.shape
+    nbnd = proj.shape[1]
+
+    for isp in range(nspin):
+        proj_file = (
+            os.path.join(output_dir, f"projectability_{['up', 'dn'][isp]}.txt")
+            if nspin == 2
+            else os.path.join(output_dir, "projectability.txt")
+        )
+        with open(proj_file, "w") as f:
+            f.write("# Energy (eV)        Projectability\n")
+            for ik in range(nkpts):
+                for ib in range(nbnd):
+                    proj_vec = proj[:, ib, ik, isp]
+                    weight = np.vdot(proj_vec, proj_vec).real
+                    energy = eigvals[ib, ik, isp]
+                    f.write(f"{energy:20.13f}  {weight:20.13f}\n")
+    log_rank0("Printed projectabilities to projectability.txt")
+
+
+def write_overlap_files(output_dir: str, Sk: np.ndarray, do_orthoovp: bool) -> None:
+    if do_orthoovp or Sk is None:
+        return
+    nR, nspin = Sk.shape[2], Sk.shape[3]
+    natomwfc = Sk.shape[0]
+    kovp_file = os.path.join(output_dir, "kovp.txt")
+    with open(kovp_file, "w") as f:
+        f.write("# Overlap Real        Overlap Imag\n")
+        for ik in range(nR):
+            for isp in range(nspin):
+                mat = Sk[:, :, ik, isp]
+                for i in range(natomwfc):
+                    for j in range(natomwfc):
+                        f.write(f"{mat[i, j].real:20.13f}  {mat[i, j].imag:20.13f}\n")
+    log_rank0("Printed overlap matrices to kovp.txt")
+
+
+def write_intermediate_files(
+    file_proj: str,
+    work_dir: str,
+    prefix: str,
+    postfix: str,
+    hk_data: Dict,
+    proj_data: Dict,
+    lattice_data: Dict,
+    do_orthoovp: bool,
+) -> None:
+    output_dir = os.path.join(work_dir, "output")
+    os.makedirs(output_dir, exist_ok=True)
+    output_prefix = os.path.join(output_dir, prefix + postfix)
+
+    write_internal_format_files(
+        output_prefix, hk_data, proj_data, lattice_data, do_orthoovp
+    )
+    log_rank0(f"{file_proj} converted from ATMPROJ to internal format")
+
+    write_projectability_files(output_dir, proj_data, hk_data["Hk"])
+    write_overlap_files(output_dir, hk_data.get("S"), do_orthoovp)

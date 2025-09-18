@@ -1,23 +1,63 @@
 import os
 import re
-import numpy as np
 import xml.etree.ElementTree as ET
-from typing import Optional, Dict
+from typing import Dict, Optional
+
+import numpy as np
 from scipy.linalg import eigh, inv
 
 from PAOFLOW_QTpy.grid.rgrid import get_rgrid
-from PAOFLOW_QTpy.io.write_data import write_internal_format_files, iotk_index
+from PAOFLOW_QTpy.io.log_module import (
+    log_proj_data,
+    log_rank0,
+    log_section_end,
+    log_section_start,
+)
+from PAOFLOW_QTpy.io.write_data import (
+    iotk_index,
+    write_intermediate_files,
+)
 from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
-from PAOFLOW_QTpy.io.log_module import (
-    log_rank0,
-    log_proj_data,
-    log_section_start,
-    log_section_end,
-)
 from PAOFLOW_QTpy.utils.converters import cartesian_to_crystal
-
 from PAOFLOW_QTpy.utils.timing import timed_function
+
+
+def validate_input(file_proj: str) -> str:
+    savedir = os.path.dirname(file_proj)
+    file_data = os.path.join(savedir, "data-file.xml")
+    if not os.path.exists(file_data):
+        raise FileNotFoundError(f"Expected data-file.xml at: {file_data}")
+    return file_data
+
+
+def convert_energy_units(proj_data: Dict) -> Dict:
+    proj_data["eigvals_raw"] = proj_data["eigvals"]
+    proj_data["efermi_raw"] = proj_data["efermi"]
+
+    unit = proj_data["energy_units"].lower()
+    factors = {
+        "ha": 27.211386018,
+        "hartree": 27.211386018,
+        "au": 27.211386018,
+        "ry": 13.605693009,
+        "ryd": 13.605693009,
+        "rydberg": 13.605693009,
+        "ev": 1.0,
+        "electronvolt": 1.0,
+    }
+    if unit not in factors:
+        raise ValueError(f"Unknown energy unit: {unit}")
+    factor = factors[unit]
+
+    proj_data["efermi"] = proj_data["efermi_raw"] * factor
+    proj_data["eigvals"] = proj_data["eigvals_raw"] * factor - proj_data["efermi"]
+    return proj_data
+
+
+def log_proj_summary(proj_data: Dict, **kwargs) -> None:
+    for line in log_proj_data(proj_data, **kwargs):
+        log_rank0(line)
 
 
 @timed_function("atmproj_to_internal")
@@ -36,93 +76,21 @@ def parse_atomic_proj(
     do_orthoovp: bool = True,
     write_intermediate: bool = True,
 ) -> Dict[str, np.ndarray]:
-    """
-    Parse atomic_proj.xml (QE projwfc.x output) and build internal Hamiltonian and projection data.
-
-    Parameters
-    ----------
-    `input_dict` : dict, optional
-        Optional input dictionary for additional parameters.
-    `file_proj` : str
-        Path to atomic_proj.xml.
-    `work_dir` : str
-        Working directory (typically ".").
-    `prefix` : str
-        QE calculation prefix (e.g., 'al5').
-    `postfix` : str
-        Suffix for output files (e.g., '_bulk').
-    `atmproj_sh` : float
-        Energy shift to avoid spurious zero modes.
-    `atmproj_thr` : float
-        Threshold for projectability filtering.
-    `atmproj_nbnd` : int, optional
-        Max number of bands to use. If None, use all available.
-    `atmproj_do_norm` : bool
-        Whether to normalize the projection vectors before constructing Hk.
-    `do_orthoovp` : bool
-        Whether to orthogonalize the overlap matrix.
-    `write_intermediate` : bool
-        Whether to write out .ham, .space, .wan intermediate files for debugging.
-
-    Returns
-    -------
-    Dict[str, np.ndarray]
-        A dictionary with keys like 'Hk', 'S', 'eigvals', 'proj', etc.
-
-    Notes
-    -----
-    The function parses QE atomic_proj.xml (via `parse_atomic_proj_xml`) and constructs
-    the k-space Hamiltonian matrix `Hk` as:
-
-        Hk(isp, ik) = Σ_{ib} eig(ib, ik, isp) ⋅ |proj_ib⟩⟨proj_ib|,
-
-    where `proj_ib` is the projection vector ⟨atomic_wfc | Bloch_state(ib, ik, isp)⟩.
-    Bands with energies above `atmproj_sh` or with projection weights below `atmproj_thr`
-    are excluded from this sum. If `atmproj_do_norm` is True, the projection vectors are
-    normalized prior to constructing `Hk`.
-
-    The real-space Hamiltonian `Hr` is computed from `Hk` via:
-
-        Hr(isp, r) = Σ_k w(k) ⋅ e^{i k ⋅ r} ⋅ Hk(isp, k),
-
-    where `w(k)` are the k-point weights, and `r` are the real-space grid points.
-    The overlaps `Sr` are computed analogously when `S` is available.
-    """
-    savedir = os.path.dirname(file_proj)
-    file_data = os.path.join(savedir, "data-file.xml")
-    if not os.path.exists(file_data):
-        raise FileNotFoundError(f"Expected data-file.xml at: {file_data}")
-
+    file_data = validate_input(file_proj)
     log_rank0(f"  {file_proj} file fmt: atmproj")
 
     lattice_data = qexml_read_cell(file_data)
     proj_data = parse_atomic_proj_xml(file_proj, lattice_data)
+    proj_data = convert_energy_units(proj_data)
 
-    proj_data["eigvals_raw"] = proj_data["eigvals"]
-    proj_data["efermi_raw"] = proj_data["efermi"]
-
-    energy_units = proj_data["energy_units"].lower()
-    if energy_units in ("ha", "hartree", "au"):
-        factor = 2 * 13.605693009
-    elif energy_units in ("ry", "ryd", "rydberg"):
-        factor = 13.605693009
-    elif energy_units in ("ev", "electronvolt"):
-        factor = 1.0
-    else:
-        raise ValueError(f"Unknown energy unit: {energy_units}")
-
-    proj_data["efermi"] = proj_data["efermi_raw"] * factor
-    proj_data["eigvals"] = proj_data["eigvals_raw"] * factor - proj_data["efermi"]
-
-    for line in log_proj_data(
+    log_proj_summary(
         proj_data,
         atmproj_sh=atmproj_sh,
         atmproj_thr=atmproj_thr,
         atmproj_nbnd=atmproj_nbnd,
         atmproj_do_norm=atmproj_do_norm,
         do_orthoovp=do_orthoovp,
-    ):
-        log_rank0(line)
+    )
 
     log_section_start("atmproj_read_ext --massive data")
     hk_data = build_hamiltonian_from_proj(
@@ -134,60 +102,22 @@ def parse_atomic_proj(
     )
     log_section_end("atmproj_read_ext --massive data")
 
-    Hk = hk_data["Hk"]
-    Sk = hk_data.get("S", None)
-
     nk = np.array([1, 1, 4], dtype=int)  # TODO: confirm this hardcoded grid
     nr = nk
     ivr, wr = get_rgrid(nr)
-
     hk_data.update({"ivr": ivr, "wr": wr, "nk": nk, "nr": nr})
 
     if write_intermediate:
-        output_dir = os.path.join(work_dir, "output")
-        os.makedirs(output_dir, exist_ok=True)
-        output_prefix = os.path.join(output_dir, prefix + postfix)
-
-        write_internal_format_files(
-            output_prefix, hk_data, proj_data, lattice_data, do_orthoovp
+        write_intermediate_files(
+            file_proj,
+            work_dir,
+            prefix,
+            postfix,
+            hk_data,
+            proj_data,
+            lattice_data,
+            do_orthoovp,
         )
-
-        log_rank0(f"{file_proj} converted from ATMPROJ to internal fmt")
-
-        proj = proj_data["proj"]
-        eigvals = proj_data["eigvals"]
-        nspin, nkpts, natomwfc, _ = Hk.shape
-        nbnd = proj.shape[1]
-
-        for isp in range(nspin):
-            proj_file = (
-                os.path.join(output_dir, f"projectability_{['up', 'dn'][isp]}.txt")
-                if nspin == 2
-                else os.path.join(output_dir, "projectability.txt")
-            )
-            with open(proj_file, "w") as f:
-                f.write("# Energy (eV)        Projectability\n")
-                for ik in range(nkpts):
-                    for ib in range(nbnd):
-                        proj_vec = proj[:, ib, ik, isp]
-                        weight = np.vdot(proj_vec, proj_vec).real
-                        energy = eigvals[ib, ik, isp]
-                        f.write(f"{energy:20.13f}  {weight:20.13f}\n")
-        log_rank0("Printed projectabilities to projectability.txt")
-
-        if not do_orthoovp and Sk is not None:
-            kovp_file = os.path.join(output_dir, "kovp.txt")
-            with open(kovp_file, "w") as f:
-                f.write("# Overlap Real        Overlap Imag\n")
-                for ik in range(nkpts):
-                    for isp in range(nspin):
-                        mat = Sk[:, :, ik, isp]
-                        for i in range(natomwfc):
-                            for j in range(natomwfc):
-                                f.write(
-                                    f"{mat[i, j].real:20.13f}  {mat[i, j].imag:20.13f}\n"
-                                )
-            log_rank0("Printed overlap matrices to kovp.txt")
 
     return hk_data
 
