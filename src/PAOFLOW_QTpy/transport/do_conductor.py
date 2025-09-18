@@ -5,6 +5,7 @@ from mpi4py import MPI
 import numpy as np
 import os
 
+from PAOFLOW_QTpy.grid.egrid import initialize_energy_grid
 from PAOFLOW_QTpy.io.write_data import (
     write_eigenchannels,
     write_operator_xml,
@@ -44,12 +45,17 @@ class ConductorCalculator:
         self.ne = data.energy.ne
         self.delta = data.energy.delta
         self.nkpts_par = int(self.runtime.nkpts_par)
-        self.egrid = np.linspace(data.energy.emin, data.energy.emax, data.energy.ne)
         self.wk_par = data._runtime.wk_par
 
         self.ivr_par3D = self.runtime.ivr_par3D
         self.vr_par3D = 2 * np.pi * self.ivr_par3D.astype(np.float64)
         self.nrtot_par = int(self.runtime.nrtot_par)
+        self.egrid = initialize_energy_grid(
+            emin=data.energy.emin,
+            emax=data.energy.emax,
+            ne=data.energy.ne,
+            carriers=self.data.carriers,
+        )
 
     @timed_function("do_conductor")
     @headered_function("Frequency Loop")
