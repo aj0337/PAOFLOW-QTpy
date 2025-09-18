@@ -28,7 +28,11 @@ from PAOFLOW_QTpy.parsers.qexml import qexml_read_cell
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 
-def validate_input(file_proj: str) -> str:
+def validate_proj_files(file_proj: str) -> str:
+    """
+    Ensure that both atomic_proj.xml and its companion data-file.xml exist.
+    Returns the path to data-file.xml if found.
+    """
     savedir = os.path.dirname(file_proj)
     file_data = os.path.join(savedir, "data-file.xml")
     if not os.path.exists(file_data):
@@ -81,7 +85,7 @@ def parse_atomic_proj(
     do_orthoovp: bool = True,
     write_intermediate: bool = True,
 ) -> Dict[str, np.ndarray]:
-    file_data = validate_input(file_proj)
+    file_data = validate_proj_files(file_proj)
     log_rank0(f"  {file_proj} file fmt: atmproj")
 
     lattice_data = qexml_read_cell(file_data)
