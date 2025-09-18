@@ -16,8 +16,8 @@ def grids_get_rgrid(
 
     Returns
     -------
-    fractional_r_points : ndarray of shape (n_points, 3)
-        Real-space grid vectors in fractional (crystal) coordinates.
+    r_points : ndarray of shape (n_points, 3)
+        Integer triplets defining real-space grid vectors in lattice units.
     weights : ndarray of shape (n_points,)
         Weights associated with each R-vector.
 
