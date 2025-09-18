@@ -13,7 +13,6 @@ import numpy as np
 from dataclasses import dataclass
 from PAOFLOW_QTpy.utils.constants import rydcm1, amconv
 
-
 from pydantic import (
     NonNegativeFloat,
     NonNegativeInt,
@@ -22,7 +21,7 @@ from pydantic import (
     confloat,
     conint,
     BaseModel as PydanticBaseModel,
-    validator,
+    field_validator,
 )
 
 CalculationType = Literal[
@@ -69,8 +68,9 @@ class FileNamesData(PydanticBaseModel):
     datafile_C_sgm: str = ""
     datafile_R_sgm: str = ""
 
-    @validator("datafile_C")
-    def check_datafile_C(cls, value) -> str:
+    @field_validator("datafile_C")
+    @classmethod
+    def check_datafile_C(cls, value: str) -> str:
         if len(value) == 0:
             raise ValueError("datafile_C unspecified")
         return value
@@ -92,14 +92,16 @@ class KPointGridSettings(PydanticBaseModel):
     nkpts_par: NonNegativeInt = 1
     nrtot_par: NonNegativeInt = 1
 
-    @validator("nk")
-    def check_nk(cls, value) -> None:
+    @field_validator("nk")
+    @classmethod
+    def check_nk(cls, value: List[int]) -> List[int]:
         if any(v < 0 for v in value):
             raise ValueError("Invalid nk: all values must be non-negative")
         return value
 
-    @validator("s")
-    def check_s(cls, value) -> None:
+    @field_validator("s")
+    @classmethod
+    def check_s(cls, value: List[int]) -> List[int]:
         if any(v < 0 or v > 1 for v in value):
             raise ValueError("Invalid s: all values must be 0 or 1")
         return value
@@ -117,33 +119,38 @@ class EnergySettings(PydanticBaseModel):
     energy_step: NonNegativeFloat = 0.001
     nx_smear: NonNegativeInt = 20000
 
-    @validator("emax")
-    def check_emax(cls, value, values):
-        emin = values.get("emin", None)
+    @field_validator("emax")
+    @classmethod
+    def check_emax(cls, value: float, info) -> float:
+        emin = info.data.get("emin", None)
         if emin is not None and value <= emin:
             raise ValueError("emax has to be greater than emin")
         return value
 
-    @validator("ne")
-    def check_ne(cls, value) -> None:
+    @field_validator("ne")
+    @classmethod
+    def check_ne(cls, value: int) -> int:
         if value <= 1:
             raise ValueError("ne has to be greater than 1")
         return value
 
-    @validator("ne_buffer")
-    def check_ne_buffer(cls, value) -> None:
+    @field_validator("ne_buffer")
+    @classmethod
+    def check_ne_buffer(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("ne_buffer has to be greater than 0")
         return value
 
-    @validator("xmax")
-    def check_xmax(cls, value) -> None:
+    @field_validator("xmax")
+    @classmethod
+    def check_xmax(cls, value: float) -> float:
         if value < 10.0:
             raise ValueError("xmax is too small")
         return value
 
-    @validator("delta_ratio")
-    def check_delta_ratio(cls, value) -> None:
+    @field_validator("delta_ratio")
+    @classmethod
+    def check_delta_ratio(cls, value: float) -> float:
         if value < 0:
             raise ValueError("delta_ratio is negative")
         if value > 0.1:
@@ -162,20 +169,23 @@ class SymmetryOutputOptions(PydanticBaseModel):
     ie_eigplot: NonNegativeInt = 0
     ik_eigplot: NonNegativeInt = 0
 
-    @validator("neigchnx")
-    def check_neigchnx(cls, value) -> None:
+    @field_validator("neigchnx")
+    @classmethod
+    def check_neigchnx(cls, value: int) -> int:
         if value < 0:
             raise ValueError("invalid neigchnx")
         return value
 
-    @validator("ie_eigplot")
-    def check_ie_eigplot(cls, value) -> None:
+    @field_validator("ie_eigplot")
+    @classmethod
+    def check_ie_eigplot(cls, value: int) -> int:
         if value < 0:
             raise ValueError("invalid ie_eigplot")
         return value
 
-    @validator("ik_eigplot")
-    def check_ik_eigplot(cls, value) -> None:
+    @field_validator("ik_eigplot")
+    @classmethod
+    def check_ik_eigplot(cls, value: int) -> int:
         if value < 0:
             raise ValueError("invalid ik_eigplot")
         return value
@@ -187,20 +197,23 @@ class IterationConvergenceSettings(PydanticBaseModel):
     nfailx: PositiveInt = 5
     transfer_thr: NonNegativeFloat = 1e-7
 
-    @validator("nprint")
-    def check_nprint(cls, value) -> None:
+    @field_validator("nprint")
+    @classmethod
+    def check_nprint(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("nprint has to be greater than 0")
         return value
 
-    @validator("niterx")
-    def check_niterx(cls, value) -> None:
+    @field_validator("niterx")
+    @classmethod
+    def check_niterx(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("niterx has to be greater than 0")
         return value
 
-    @validator("transfer_thr")
-    def check_transfer_thr(cls, value) -> None:
+    @field_validator("transfer_thr")
+    @classmethod
+    def check_transfer_thr(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("invalid value for transfer_thr")
         return value
@@ -212,14 +225,16 @@ class AtomicProjectionOverlapSettings(PydanticBaseModel):
     atmproj_thr: Annotated[NonNegativeFloat, confloat(ge=0.0, le=1.0)] = 0.9
     atmproj_nbnd: NonNegativeInt = 0
 
-    @validator("atmproj_thr")
-    def check_atmproj_thr(cls, value) -> None:
+    @field_validator("atmproj_thr")
+    @classmethod
+    def check_atmproj_thr(cls, value: float) -> float:
         if value > 1.0 or value < 0.0:
             raise ValueError("invalid atmproj_thr")
         return value
 
-    @validator("atmproj_nbnd")
-    def check_atmproj_nbnd(cls, value) -> None:
+    @field_validator("atmproj_nbnd")
+    @classmethod
+    def check_atmproj_nbnd(cls, value: int) -> int:
         if value < 0.0:
             raise ValueError("invalid atmproj_nbnd")
         return value
@@ -234,8 +249,9 @@ class AdvancedSettings(PydanticBaseModel):
     ldynam_corr: bool = False
     leads_are_identical: bool = True
 
-    @validator("ispin")
-    def check_ispin(cls, value) -> None:
+    @field_validator("ispin")
+    @classmethod
+    def check_ispin(cls, value: int) -> int:
         if value < 0 or value > 2:
             raise ValueError("Invalid ispin")
         return value
@@ -396,16 +412,18 @@ class ConductorData(PydanticBaseModel):
                 raise ValueError("emin < 0.0, invalid emin")
             self.energy.emax = self.energy.emax**2 / (rydcm1 / np.sqrt(amconv)) ** 2
 
-    @validator("transport_direction")
-    def check_transport_direction(cls, value) -> None:
+    @field_validator("transport_direction")
+    @classmethod
+    def check_transport_direction(cls, value: int) -> int:
         if value < 1 or value > 3:
             raise ValueError(
                 "Invalid value for transport_direction. Allowed values are 1,2 or 3"
             )
         return value
 
-    @validator("dimC")
-    def check_dimC(cls, value) -> None:
+    @field_validator("dimC")
+    @classmethod
+    def check_dimC(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("dimC needs to be positive")
         return value
@@ -438,8 +456,9 @@ class CurrentData(PydanticBaseModel):
         if self.sigma < 0:
             raise ValueError("sigma must be non-negative")
 
-    @validator("nV")
-    def check_nV(cls, value) -> None:
+    @field_validator("nV")
+    @classmethod
+    def check_nV(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("nV must be positive")
         return value
