@@ -262,8 +262,8 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
     - OVERLAPS block if present.
     """
 
-    log_section_start("Begins atmproj_read_ext")
-    log_section_start("Begins reading eigenvalues")
+    log_section_start("atmproj_read_ext")
+    log_section_start("reading eigenvalues")
 
     tree = ET.parse(file_proj)
     root = tree.getroot()
@@ -299,9 +299,9 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
             eig_tag = kpoint.find(spin_tag) if nspin > 1 else kpoint.find("EIG")
             eigvals[:, ik, isp] = [float(x) for x in eig_tag.text.strip().split()]
 
-    log_section_end("Finished reading eigenvalues")
+    log_section_end("reading eigenvalues")
 
-    log_section_start("Begins reading projections")
+    log_section_start("reading projections")
     proj = np.zeros((natomwfc, nbnd, nkpt, nspin), dtype=np.complex128)
     projections_section = root.find("PROJECTIONS")
     for ik, kpoint in enumerate(projections_section):
@@ -316,8 +316,8 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> Dict:
                     real, im = float(data[2 * ib]), float(data[2 * ib + 1])
                     proj[ias, ib, ik, isp] = real + 1j * im
 
-    log_section_end("Ends reading projections")
-    log_section_end("Ends atmproj_read_ext")
+    log_section_end("reading projections")
+    log_section_end("atmproj_read_ext")
 
     overlap_section = root.find("OVERLAPS")
     overlap = None

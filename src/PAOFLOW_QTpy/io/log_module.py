@@ -35,11 +35,11 @@ def log_rank0(message: str):
 
 
 def log_section_start(name: str):
-    log_rank0(f"Begins {name}")
+    log_rank0(f"Started {name}")
 
 
 def log_section_end(name: str):
-    log_rank0(f"Ends {name}")
+    log_rank0(f"Finished {name}")
 
 
 def log_proj_data(
