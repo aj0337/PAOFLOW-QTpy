@@ -1,4 +1,6 @@
 input_conductor:
+  output_dir: "output"
+  prefix: "al5"
   postfix: "_bulk"
   dimC: 20
   calculation_type: "bulk"
@@ -14,7 +16,6 @@ input_conductor:
   write_gf: false
   write_lead_sgm: false
   use_sym: false
-  output_dir: "output"
 
 hamiltonian_data:
   H00_C:

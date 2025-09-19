@@ -79,9 +79,9 @@ def log_proj_summary(proj_data: AtomicProjData, data: ConductorData) -> None:
 @headered_function("Conductor Initialization")
 def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
     file_proj = data.file_names.datafile_C
-    work_dir = data.file_names.work_dir
     prefix = data.file_names.prefix
     postfix = data.file_names.postfix
+    output_dir = data.file_names.output_dir
     opts = data.atomic_proj
 
     file_data = validate_proj_files(file_proj)
@@ -110,8 +110,8 @@ def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
 
     if opts.write_intermediate:
         write_intermediate_files(
+            output_dir,
             file_proj,
-            work_dir,
             prefix,
             postfix,
             hk_data,

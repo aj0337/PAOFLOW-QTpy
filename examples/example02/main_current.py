@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from mpi4py import MPI
 
-from PAOFLOW_QTpy.do_current import (
+from PAOFLOW_QTpy.transport.do_current import (
     read_transmittance,
     build_bias_grid,
     compute_current_vs_bias,

@@ -625,8 +625,8 @@ def write_overlap_files(output_dir: str, Sk: np.ndarray, do_orthoovp: bool) -> N
 
 
 def write_intermediate_files(
+    output_dir: Path,
     file_proj: str,
-    work_dir: str,
     prefix: str,
     postfix: str,
     hk_data: Dict,
@@ -634,8 +634,9 @@ def write_intermediate_files(
     lattice_data: Dict,
     do_orthoovp: bool,
 ) -> None:
-    output_dir = os.path.join(work_dir, "output")
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     output_prefix = os.path.join(output_dir, prefix + postfix)
 
     write_internal_format_files(
