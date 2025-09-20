@@ -4,7 +4,7 @@ This document tracks the translation of Fortran routines into modular, Pythonic 
 
 ---
 
-## 🔁 Function Mapping Table
+## Function Mapping Table
 
 src/
 | Fortran Function | Python Equivalent | Status | Notes |
@@ -70,7 +70,7 @@ This section maps how QE XML tags are parsed in the Fortran module `qexml.f90` v
 
 ---
 
-### 🧭 Overview: QE XML Parsing Layers
+### Overview: QE XML Parsing Layers
 
 | Data Type / Section        | XML Tag                      | Fortran (qexml.f90)                          | Python Function               | Notes                                                               |
 | -------------------------- | ---------------------------- | -------------------------------------------- | ----------------------------- | ------------------------------------------------------------------- |
@@ -88,7 +88,7 @@ This section maps how QE XML tags are parsed in the Fortran module `qexml.f90` v
 
 ---
 
-### 🔄 One-to-One Tag/Field Mapping
+### One-to-One Tag/Field Mapping
 
 #### From `parse_data_file` (Python)
 
@@ -119,14 +119,14 @@ This section maps how QE XML tags are parsed in the Fortran module `qexml.f90` v
 
 ---
 
-### 🧾 Namespace Notes
+### Namespace Notes
 
 - **Python**: XML namespace resolution is done using:
   ```python
   ns = {"qes": "http://www.quantum-espresso.org/ns/qes"}
   ```
 
-## 📌 Additional Notes
+## Additional Notes
 
 - Global variables from Fortran modules are being passed explicitly in Python.
 - Obsolete or utility routines that are replaced with NumPy or Python standard libraries are removed.
