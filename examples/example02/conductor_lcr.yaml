@@ -1,5 +1,5 @@
 input_conductor:
-  output_dir: "output"
+  output_dir: "./output"
   prefix: "alh"
   postfix: "_lcr"
   dimL: 12

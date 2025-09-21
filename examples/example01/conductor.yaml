@@ -1,5 +1,5 @@
 input_conductor:
-  output_dir: "output"
+  output_dir: "./output"
   prefix: "al5"
   postfix: "_bulk"
   dimC: 20

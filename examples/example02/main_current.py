@@ -1,49 +1,33 @@
-import sys
-from pathlib import Path
-import numpy as np
 from mpi4py import MPI
 
-from PAOFLOW_QTpy.transport.do_current import (
-    read_transmittance,
-    build_bias_grid,
-    compute_current_vs_bias,
-)
-from PAOFLOW_QTpy.io.get_input_params import load_current_data_from_yaml
+from PAOFLOW_QTpy.parsers.parser_base import parse_args
+from PAOFLOW_QTpy.transport.do_current import CurrentCalculator
+from PAOFLOW_QTpy.workspace.prepare_data import prepare_current
+from PAOFLOW_QTpy.utils.memusage import MemoryTracker
+from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 
 comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
 
 
+@timed_function("current")
 def main():
-    yaml_path = Path("current.yaml")
-    inputs = load_current_data_from_yaml(yaml_path)
+    yaml_file = parse_args()
+    data = prepare_current(yaml_file)
+    memory_tracker = MemoryTracker()
 
-    if inputs is None:
-        if rank == 0:
+    if data is None:
+        if comm.rank == 0:
             print("No current.yaml found. Skipping current calculation.")
         return
 
-    if rank == 0:
-        print(f"Reading transmittance data from {inputs['filein']}")
+    calculator = CurrentCalculator(data)
+    calculator.run()
 
-    egrid, transm = read_transmittance(inputs["filein"])
-    vgrid = build_bias_grid(inputs["Vmin"], inputs["Vmax"], inputs["nV"])
-
-    currents = compute_current_vs_bias(
-        egrid,
-        transm,
-        vgrid,
-        inputs["mu_L"],
-        inputs["mu_R"],
-        inputs["sigma"],
-    )
-
-    if rank == 0:
-        outpath = Path(inputs["fileout"])
-        outpath.parent.mkdir(parents=True, exist_ok=True)
-        np.savetxt(outpath, np.column_stack([vgrid, currents]))
-        print(f"Saved current vs bias to {outpath}")
+    if comm.rank == 0:
+        calculator.write_output()
+        global_timing.report()
+        memory_tracker.report(include_real_memory=True)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

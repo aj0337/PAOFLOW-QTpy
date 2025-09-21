@@ -1,4 +1,5 @@
 input:
+  output_dir: "./output"
   filein: "./output/conductance_lcr.dat"
   fileout: "./output/current.dat"
   Vmin: -1.0

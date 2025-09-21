@@ -2,26 +2,30 @@ from __future__ import annotations
 
 import os
 from typing import Callable
+
 from mpi4py import MPI
 
+from PAOFLOW_QTpy.grid.kpoints import (
+    KpointsData,
+    compute_fourier_phase_table,
+    initialize_kpoints,
+    initialize_meshsize,
+    initialize_r_vectors,
+    kpoints_mask,
+)
 from PAOFLOW_QTpy.hamiltonian.hamiltonian import HamiltonianSystem
 from PAOFLOW_QTpy.hamiltonian.hamiltonian_init import (
     check_leads_are_identical,
     initialize_hamiltonian_blocks,
 )
-from PAOFLOW_QTpy.io.get_input_params import load_conductor_data_from_yaml
-from PAOFLOW_QTpy.io.log_module import log_startup
-from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
-from PAOFLOW_QTpy.io.summary import print_summary
-from PAOFLOW_QTpy.io.input_parameters import ConductorData, RuntimeData
-from PAOFLOW_QTpy.grid.kpoints import (
-    KpointsData,
-    compute_fourier_phase_table,
-    initialize_meshsize,
-    initialize_kpoints,
-    initialize_r_vectors,
-    kpoints_mask,
+from PAOFLOW_QTpy.io.get_input_params import (
+    load_conductor_data_from_yaml,
+    load_current_data_from_yaml,
 )
+from PAOFLOW_QTpy.io.input_parameters import ConductorData, RuntimeData
+from PAOFLOW_QTpy.io.log_module import log_startup
+from PAOFLOW_QTpy.io.summary import print_summary
+from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.smearing.smearing_T import SmearingData
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.workspace.workspace import Workspace
@@ -266,3 +270,20 @@ def prepare_workspace(data: ConductorData, memory_tracker: MemoryTracker) -> Wor
         "workspace", workspace.memusage, is_allocated=workspace.allocated
     )
     return workspace
+
+
+def prepare_current(yaml_file: str) -> dict | None:
+    """
+    Load current calculation input parameters from YAML.
+
+    Parameters
+    ----------
+    `yaml_file` : str
+        Path to the YAML input file (e.g. current.yaml).
+
+    Returns
+    -------
+    `data` : dict or None
+        Parsed input parameters, or None if loading fails.
+    """
+    return load_current_data_from_yaml(yaml_file)
