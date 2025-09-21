@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 import numpy as np
 from typing import Literal
@@ -10,6 +11,7 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 
 @timed_function("hamiltonian_init")
 def initialize_hamiltonian_blocks(
+    output_dir: str,
     ham_system: HamiltonianSystem,
     ivr_par3D: np.ndarray,
     wr_par: np.ndarray,
@@ -51,9 +53,8 @@ def initialize_hamiltonian_blocks(
     """
 
     def with_ham_suffix(path: str) -> str:
-        if path.endswith(".xml"):
-            return f"{path}.ham"
-        return f"{path}.xml.ham"
+        name = Path(path).name
+        return f"{output_dir}/{name}.ham"
 
     def extract_2D_ivrs(ivr3D: np.ndarray, transport_direction: int) -> np.ndarray:
         if transport_direction == 1:

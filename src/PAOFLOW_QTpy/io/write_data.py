@@ -194,6 +194,7 @@ def iotk_index(n: int) -> str:
 
 
 def write_internal_format_files(
+    output_dir: Path,
     output_prefix: str,
     hk_data: Dict[str, np.ndarray],
     proj_data: AtomicProjData,
@@ -232,8 +233,8 @@ def write_internal_format_files(
     `do_orthoovp` : bool
         If False and overlap matrices are provided, overlap blocks will be written to the output.
     """
+    output_dir.mkdir(parents=True, exist_ok=True)
     ham_file = output_prefix + ".ham"
-
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
     ivr = hk_data["ivr"]
@@ -622,27 +623,3 @@ def write_overlap_files(output_dir: str, Sk: np.ndarray, do_orthoovp: bool) -> N
                     for j in range(natomwfc):
                         f.write(f"{mat[i, j].real:20.13f}  {mat[i, j].imag:20.13f}\n")
     log_rank0("Printed overlap matrices to kovp.txt")
-
-
-def write_intermediate_files(
-    output_dir: Path,
-    file_proj: str,
-    prefix: str,
-    postfix: str,
-    hk_data: Dict,
-    proj_data: AtomicProjData,
-    lattice_data: Dict,
-    do_orthoovp: bool,
-) -> None:
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_prefix = os.path.join(output_dir, prefix + postfix)
-
-    write_internal_format_files(
-        output_prefix, hk_data, proj_data, lattice_data, do_orthoovp
-    )
-    log_rank0(f"{file_proj} converted from ATMPROJ to internal format")
-
-    write_projectability_files(output_dir, proj_data, hk_data["Hk"])
-    write_overlap_files(output_dir, hk_data.get("S"), do_orthoovp)

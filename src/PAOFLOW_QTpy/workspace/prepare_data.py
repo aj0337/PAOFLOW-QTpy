@@ -209,6 +209,7 @@ def prepare_hamiltonian_blocks_and_leads(
     )
 
     initialize_hamiltonian_blocks(
+        output_dir=data.file_names.output_dir,
         ham_system=ham_sys,
         ivr_par3D=data._runtime.ivr_par3D.T,
         wr_par=data._runtime.wr_par,

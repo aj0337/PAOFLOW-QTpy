@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -15,7 +16,9 @@ from PAOFLOW_QTpy.io.log_module import (
     log_section_start,
 )
 from PAOFLOW_QTpy.io.write_data import (
-    write_intermediate_files,
+    write_internal_format_files,
+    write_projectability_files,
+    write_overlap_files,
 )
 from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.parsers.atmproj_parser_base import (
@@ -79,8 +82,6 @@ def log_proj_summary(proj_data: AtomicProjData, data: ConductorData) -> None:
 @headered_function("Conductor Initialization")
 def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
     file_proj = data.file_names.datafile_C
-    prefix = data.file_names.prefix
-    postfix = data.file_names.postfix
     output_dir = data.file_names.output_dir
     opts = data.atomic_proj
 
@@ -108,17 +109,21 @@ def parse_atomic_proj(data) -> Dict[str, np.ndarray]:
     ivr, wr = get_rgrid(nr)
     hk_data.update({"ivr": ivr, "wr": wr, "nk": nk, "nr": nr})
 
-    if opts.write_intermediate:
-        write_intermediate_files(
-            output_dir,
-            file_proj,
-            prefix,
-            postfix,
-            hk_data,
-            proj_data,
-            lattice_data,
-            opts.do_orthoovp,
-        )
+    name = Path(file_proj).name
+    output_prefix = Path(output_dir) / name
+    write_internal_format_files(
+        Path(output_dir),
+        str(output_prefix),
+        hk_data,
+        proj_data,
+        lattice_data,
+        opts.do_orthoovp,
+    )
+
+    write_projectability_files(output_dir, proj_data, hk_data["Hk"])
+    write_overlap_files(output_dir, hk_data.get("S"), opts.do_orthoovp)
+
+    log_rank0(f"{file_proj} converted from ATMPROJ to internal format")
 
     return hk_data
 
