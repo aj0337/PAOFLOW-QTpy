@@ -9,7 +9,6 @@ from PAOFLOW_QTpy.grid.egrid import initialize_energy_grid
 from PAOFLOW_QTpy.io.write_data import (
     write_eigenchannels,
     write_operator_xml,
-    write_kresolved_operator_xml,
     write_data,
 )
 from PAOFLOW_QTpy.transport.green import compute_conductor_green_function
@@ -272,15 +271,15 @@ class ConductorCalculator:
         if self.data.symmetry.write_gf:
             for ir in range(self.nrtot_par):
                 self.gf_out[ie_g, ir] = compute_rham(
-                    self.vr_par3D[:, ir], gC_k, self.vkpt_par3D.T, self.wk_par
+                    self.vr_par3D[ir, :], gC_k, self.vkpt_par3D.T, self.wk_par
                 )
         if self.data.symmetry.write_lead_sgm:
             for ir in range(self.nrtot_par):
                 self.rsgmL_out[ie_g, ir] = compute_rham(
-                    self.vr_par3D[:, ir], sgmL_k, self.vkpt_par3D.T, self.wk_par
+                    self.vr_par3D[ir, :], sgmL_k, self.vkpt_par3D.T, self.wk_par
                 )
                 self.rsgmR_out[ie_g, ir] = compute_rham(
-                    self.vr_par3D[:, ir], sgmR_k, self.vkpt_par3D.T, self.wk_par
+                    self.vr_par3D[ir, :], sgmR_k, self.vkpt_par3D.T, self.wk_par
                 )
 
     def reduce_results(self, conduct, dos, conduct_k, dos_k):
@@ -301,40 +300,38 @@ class ConductorCalculator:
 
         if self.data.symmetry.write_gf:
             write_operator_xml(
-                "greenf.xml",
-                self.gf_out,
-                self.ivr_par3D,
-                self.egrid,
-                self.dimC,
-                True,
-                "retarded",
-                "eV",
+                output_dir=Path(self.data.file_names.output_dir),
+                filename="greenf.xml",
+                operator_matrix=self.gf_out,
+                ivr=self.ivr_par3D,
+                grid=self.egrid,
+                dimwann=self.dimC,
+                dynamical=True,
+                eunits="eV",
+                analyticity="retarded",
             )
         if self.data.symmetry.write_lead_sgm:
             write_operator_xml(
-                "lead_L_sgm.xml",
-                self.rsgmL_out,
-                self.ivr_par3D,
-                self.egrid,
-                self.dimC,
-                True,
-                "retarded",
-                "eV",
+                output_dir=Path(self.data.file_names.output_dir),
+                filename="lead_L_sgm.xml",
+                operator_matrix=self.rsgmL_out,
+                ivr=self.ivr_par3D,
+                grid=self.egrid,
+                dimwann=self.dimC,
+                dynamical=True,
+                eunits="eV",
+                analyticity="retarded",
             )
             write_operator_xml(
-                "lead_R_sgm.xml",
-                self.rsgmR_out,
-                self.ivr_par3D,
-                self.egrid,
-                self.dimC,
-                True,
-                "retarded",
-                "eV",
-            )
-            write_kresolved_operator_xml(
-                filename="lead_L_k.xml",
+                output_dir=Path(self.data.file_names.output_dir),
+                filename="lead_R_sgm.xml",
+                operator_matrix=self.rsgmR_out,
+                ivr=self.ivr_par3D,
+                grid=self.egrid,
                 dimwann=self.dimC,
-                vkpt=self.vkpt_par3D,
+                dynamical=True,
+                eunits="eV",
+                analyticity="retarded",
             )
 
     def get_k_resolved_conductance(self, conduct_k: np.ndarray) -> np.ndarray:

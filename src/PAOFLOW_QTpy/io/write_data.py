@@ -396,13 +396,15 @@ def write_kham(
 
 
 def write_operator_xml(
+    *,
+    output_dir: Path,
     filename: str,
     operator_matrix: Optional[np.ndarray] = None,
     ivr: Optional[np.ndarray] = None,
     vr: Optional[np.ndarray] = None,
     grid: Optional[np.ndarray] = None,
-    dimwann: int = 0,
-    dynamical: bool = False,
+    dimwann: int,
+    dynamical: bool,
     analyticity: str = "",
     eunits: str = "eV",
     nomega: Optional[int] = None,
@@ -437,7 +439,8 @@ def write_operator_xml(
         if nrtot is None:
             nrtot = len(ivr) if ivr is not None else len(vr)
 
-    with open(filename, "w") as f:
+    file = output_dir / filename
+    with open(file, "w") as f:
         f.write('<?xml version="1.0"?>\n')
 
         f.write("<OPERATOR>\n")
