@@ -23,12 +23,30 @@ from PAOFLOW_QTpy.io.get_input_params import ConductorData
 
 
 class ConductorCalculator:
+    """
+    Driver class for quantum transport calculations in a conductor geometry.
+
+    This class encapsulates the workflow for computing retarded Green's functions,
+    lead self-energies, conductance, and density of states (DOS) in a central conductor
+    connected to left and right leads.
+    """
+
     def __init__(
         self,
         data: ConductorData,
         *,
         blc_blocks: dict,
     ):
+        """
+        Initialize a ConductorCalculator.
+
+        Parameters
+        ----------
+        data : ConductorData
+            Input parameters and runtime metadata describing the conductor setup.
+        blc_blocks : dict
+            Dictionary of OperatorBlock objects holding Hamiltonian and overlap blocks.
+        """
         self.data = data
         self.blc_blocks = blc_blocks
         self.vkpt_par3D = data._runtime.vkpt_par3D
@@ -59,6 +77,41 @@ class ConductorCalculator:
     @timed_function("do_conductor")
     @headered_function("Frequency Loop")
     def run(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Execute the full conductor calculation.
+
+        Returns
+        -------
+        conduct : ndarray of shape (nchannels, ne)
+            Energy-resolved conductance, including eigenchannels if requested.
+        dos : ndarray of shape (ne,)
+            Density of states of the conductor.
+        conduct_k : ndarray of shape (nchannels, nkpts_par, ne)
+            k-resolved conductance values.
+        dos_k : ndarray of shape (ne, nkpts_par)
+            k-resolved density of states.
+
+        Notes
+        -----
+        The main loop distributes energy grid points across MPI ranks.
+        At each energy:
+
+        1. Hamiltonian blocks are updated with ``hamiltonian_setup``.
+        2. Lead self-energies are computed by iterative surface Green’s function methods.
+        3. The conductor Green's function is constructed:
+
+           ``G_C(E) = [ (E + iδ)I - H_C - Σ_L(E) - Σ_R(E) ]⁻¹``
+
+        4. DOS is accumulated as:
+
+           ``DOS(E) = -1/π · Im Tr[G_C(E)]``
+
+        5. Conductance is evaluated via the Landauer formula:
+
+           ``T(E) = Tr[ Γ_L G_C Γ_R G_C† ]``
+
+           where ``Γ_{L/R} = i (Σ_{L/R} - Σ_{L/R}†)``.
+        """
         self.conduct, self.dos, self.conduct_k, self.dos_k = self.initialize_outputs()
         ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
         for ie_g in range(ie_start, ie_end + 1):
@@ -76,6 +129,20 @@ class ConductorCalculator:
         return self.conduct, self.dos, self.conduct_k, self.dos_k
 
     def initialize_outputs(self):
+        """
+        Allocate output arrays for conductance, DOS, and optional Green’s functions.
+
+        Returns
+        -------
+        conduct : ndarray
+            Total and eigenchannel conductance vs energy.
+        dos : ndarray
+            DOS vs energy.
+        conduct_k : ndarray
+            k-resolved conductance.
+        dos_k : ndarray
+            k-resolved DOS.
+        """
         do_eigenchannels = self.data.symmetry.do_eigenchannels
         neigchnx = self.data.symmetry.neigchnx
         neigchn = (
@@ -114,6 +181,16 @@ class ConductorCalculator:
     def process_energy(
         self, conduct, dos, conduct_k, dos_k, ie_g: int, ie_start: int, ie_end: int
     ):
+        """
+        Perform all calculations for a single energy point.
+
+        Returns
+        -------
+        conduct : ndarray
+            Updated conductance.
+        dos : ndarray
+            Updated DOS.
+        """
         nprint = self.data.iteration.nprint
         if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
             print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
@@ -149,6 +226,18 @@ class ConductorCalculator:
         return conduct, dos
 
     def initialize_k_dependent(self):
+        """
+        Allocate temporary arrays for k-dependent Green's functions and self-energies.
+
+        Returns
+        -------
+        gC_k : ndarray or None
+            Conductor Green’s function at each k-point, if requested.
+        sgmL_k : ndarray or None
+            Left lead self-energy at each k-point, if requested.
+        sgmR_k : ndarray or None
+            Right lead self-energy at each k-point, if requested.
+        """
         gC_k = (
             np.zeros((self.nkpts_par, self.dimC, self.dimC), dtype=np.complex128)
             if self.data.symmetry.write_gf
@@ -167,6 +256,27 @@ class ConductorCalculator:
         return gC_k, sgmL_k, sgmR_k
 
     def process_kpoint(self, ie_g: int, ik: int):
+        """
+        Perform the calculation for one energy and one k-point.
+
+        Parameters
+        ----------
+        ie_g : int
+            Index of the energy point.
+        ik : int
+            Index of the k-point.
+
+        Returns
+        -------
+        gC : ndarray of shape (dimC, dimC)
+            Conductor Green’s function at this (E, k).
+        sigma_L : ndarray
+            Left lead self-energy.
+        sigma_R : ndarray
+            Right lead self-energy.
+        niter_sum : int
+            Total number of Sancho-Rubio iterations performed.
+        """
         hamiltonian_setup(
             ik=ik,
             ie_g=ie_g,
@@ -209,6 +319,15 @@ class ConductorCalculator:
         return gC, sigma_L, sigma_R, niter_sum
 
     def accumulate_dos(self, dos, dos_k, gC, ie_g, ik):
+        """
+        Accumulate DOS contributions from a given k-point.
+
+        Notes
+        -----
+        The contribution from each k-point is weighted by its k-point weight:
+
+        ``DOS(E) += -w_k / π · Im Tr[G_C(E, k)]``
+        """
         diag_imag = np.imag(np.diagonal(gC))
         dos_k[ie_g, ik] = -self.wk_par[ik] * np.sum(diag_imag) / np.pi
         dos[ie_g] += dos_k[ie_g, ik]
@@ -216,6 +335,20 @@ class ConductorCalculator:
     def accumulate_conductance(
         self, conduct, conduct_k, gC, sigma_L, sigma_R, ie_g, ik
     ):
+        """
+        Accumulate conductance contributions from a given k-point.
+
+        Notes
+        -----
+        Transmission is computed using the Landauer expression:
+
+        ``T(E, k) = Tr[ Γ_L G_C Γ_R G_C† ]``
+
+        where ``Γ_{L/R} = i (Σ_{L/R} - Σ_{L/R}†)``.
+
+        Eigenchannel decomposition is optionally performed by diagonalizing
+        ``√Γ_L G_C Γ_R G_C† √Γ_L``.
+        """
         gamma_L = 1j * (sigma_L - sigma_L.conj().T)
         gamma_R = 1j * (sigma_R - sigma_R.conj().T)
 
@@ -260,6 +393,16 @@ class ConductorCalculator:
             )
 
     def finalize_energy(self, ie_g, gC_k, sgmL_k, sgmR_k):
+        """
+        Perform Fourier transforms to obtain real-space operators at this energy.
+
+        Notes
+        -----
+        Uses `compute_rham` to transform k-dependent Green’s functions or
+        self-energies into real-space representations:
+
+        ``O(R, E) = Σ_k w_k e^{-i k·R} O(k, E)``
+        """
         if self.data.symmetry.write_gf:
             for ir in range(self.nrtot_par):
                 self.gf_out[ie_g, ir] = compute_rham(
@@ -275,6 +418,14 @@ class ConductorCalculator:
                 )
 
     def reduce_results(self, conduct, dos, conduct_k, dos_k):
+        """
+        Collect results across MPI ranks by summing over all contributions.
+
+        Notes
+        -----
+        Calls `MPI.Allreduce` to accumulate conductance, DOS, Green’s functions,
+        and lead self-energies across all ranks.
+        """
         self.comm.Allreduce(MPI.IN_PLACE, conduct, op=MPI.SUM)
         self.comm.Allreduce(MPI.IN_PLACE, conduct_k, op=MPI.SUM)
         self.comm.Allreduce(MPI.IN_PLACE, dos, op=MPI.SUM)
@@ -287,6 +438,13 @@ class ConductorCalculator:
             self.comm.Allreduce(MPI.IN_PLACE, self.rsgmR_out, op=MPI.SUM)
 
     def write_operators(self):
+        """
+        Write operator data (Green’s functions, lead self-energies) to XML.
+
+        Notes
+        -----
+        Uses `write_operator_xml` to replicate the Fortran IOTK format exactly.
+        """
         if self.rank != 0:
             return
 
@@ -327,13 +485,47 @@ class ConductorCalculator:
             )
 
     def get_k_resolved_conductance(self, conduct_k: np.ndarray) -> np.ndarray:
+        """
+        Return the k-resolved conductance array.
+
+        Parameters
+        ----------
+        conduct_k : ndarray
+            k-resolved conductance.
+
+        Returns
+        -------
+        ndarray
+            Input array for convenience.
+        """
         return conduct_k
 
     def get_k_resolved_dos(self, dos_k: np.ndarray) -> np.ndarray:
+        """
+        Return the k-resolved DOS array.
+
+        Parameters
+        ----------
+        dos_k : ndarray
+            k-resolved DOS.
+
+        Returns
+        -------
+        ndarray
+            Input array for convenience.
+        """
         return dos_k
 
     @headered_function("Writing data")
     def write_output(self):
+        """
+        Write final conductance and DOS results to disk.
+
+        Notes
+        -----
+        - Writes `conductance.dat` and `doscond.dat` for total results.
+        - Optionally writes k-resolved data per k-point.
+        """
         if self.rank != 0:
             return
 
