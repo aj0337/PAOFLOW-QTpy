@@ -388,7 +388,7 @@ class OperatorBlock:
             Multi-line string describing the operator block state.
         """
         return (
-            f"\n  OperatorBlock Summary: {self.blc_name}\n"
+            f"\n  OperatorBlock Summary: {self.name}\n"
             f"    dim1, dim2           : {self.dim1}, {self.dim2}\n"
             f"    nkpts                : {self.nkpts}\n"
             f"    dimx_sgm             : {self.dimx_sgm}\n"
