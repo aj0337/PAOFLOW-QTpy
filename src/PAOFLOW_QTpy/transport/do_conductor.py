@@ -259,14 +259,6 @@ class ConductorCalculator:
                 verbose=True,
             )
 
-        conduct[0, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
-        conduct_k[0, ik, ie_g] += self.wk_par[ik] * np.sum(cond_aux)
-
-        if self.data.symmetry.do_eigenchannels:
-            nchan = min(conduct.shape[0] - 1, cond_aux.shape[0])
-            conduct[1 : 1 + nchan, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
-            conduct_k[1 : 1 + nchan, ik, ie_g] += self.wk_par[ik] * cond_aux[:nchan]
-
     def finalize_energy(self, ie_g, gC_k, sgmL_k, sgmR_k):
         if self.data.symmetry.write_gf:
             for ir in range(self.nrtot_par):
