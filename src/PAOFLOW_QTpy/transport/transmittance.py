@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.linalg import eigh
 from scipy.linalg import solve
-from typing import Literal
 
+from PAOFLOW_QTpy.io.input_parameters import ConductFormula
 from PAOFLOW_QTpy.utils.timing import timed_function
 
 
@@ -11,9 +11,9 @@ def evaluate_transmittance(
     gamma_L: np.ndarray,
     gamma_R: np.ndarray,
     G_ret: np.ndarray,
-    formula: Literal["landauer", "generalized"] = "landauer",
-    do_eigenchannels: bool = False,
-    do_eigplot: bool = False,
+    formula: ConductFormula,
+    do_eigenchannels: bool,
+    do_eigplot: bool,
     sgm_corr: np.ndarray | None = None,
     eta: float = 1e-5,
     S_overlap: np.ndarray | None = None,

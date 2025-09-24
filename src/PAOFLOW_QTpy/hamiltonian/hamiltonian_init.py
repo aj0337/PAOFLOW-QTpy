@@ -2,10 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from typing import Literal
 
 from PAOFLOW_QTpy.hamiltonian.hamiltonian import HamiltonianSystem
-from PAOFLOW_QTpy.io.input_parameters import ConductorData
+from PAOFLOW_QTpy.io.input_parameters import CalculationType, ConductorData
 from PAOFLOW_QTpy.parsers.read_matrix import read_matrix
 from PAOFLOW_QTpy.utils.timing import timed_function
 
@@ -20,7 +19,7 @@ def initialize_hamiltonian_blocks(
     datafile_C: str,
     ispin: int,
     transport_direction: int,
-    calculation_type: Literal["conductor", "bulk"],
+    calculation_type: CalculationType,
     datafile_L: str = "",
     datafile_R: str = "",
     conductor_data: ConductorData | None = None,

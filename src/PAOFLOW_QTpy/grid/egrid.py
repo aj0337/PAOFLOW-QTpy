@@ -1,12 +1,13 @@
 import numpy as np
-from typing import Literal
+
+from PAOFLOW_QTpy.io.input_parameters import Carriers
 
 
 def initialize_energy_grid(
     emin: float,
     emax: float,
     ne: int,
-    carriers: Literal["electrons", "phonons"] = "electrons",
+    carriers: Carriers,
 ) -> np.ndarray:
     """
     Initialize a linear energy grid for transport calculations.
