@@ -5,18 +5,18 @@
               =                                            =
 ======================================================================
 Program <conductor.py>  v. 0.0.1  starts ...
-Date 2025-09-04 at 21:32:55
+Date 2025-09-24 at 15:33:30
 Number of MPI processes:    1
   ======================================================================
   =                       Conductor Initialization                     =
   ======================================================================
   ./alh.save/atomic_proj.xml file fmt: atmproj
-Begins atmproj_read_ext
-Begins reading eigenvalues
+Started atmproj_read_ext
+Started reading eigenvalues
 Finished reading eigenvalues
-Begins reading projections
-Ends reading projections
-Ends atmproj_read_ext
+Started reading projections
+Finished reading projections
+Finished atmproj_read_ext
   Dimensions found in atomic_proj.{dat,xml}:
     nbnd     :    60
     nkpts    :     8
@@ -31,11 +31,11 @@ Ends atmproj_read_ext
     atmproj_thr  :     0.900000
     atmproj_sh   :     3.500000
     atmproj_do_norm:  False
-Begins atmproj_read_ext --massive data
 Using an orthogonal basis. do_orthoovp=.true.
-Ends atmproj_read_ext --massive data
-./alh.save/atomic_proj.xml converted from ATMPROJ to internal fmt
+Started atmproj_read_ext --massive data
+Finished atmproj_read_ext --massive data
 Printed projectabilities to projectability.txt
+./alh.save/atomic_proj.xml converted from ATMPROJ to internal format
 
   ======================================================================
   =  INPUT Summary                                                     =
@@ -43,7 +43,7 @@ Printed projectabilities to projectability.txt
 
   <INPUT>
           Calculation Type :     bulk
-                    prefix :
+                    prefix :     alh
                    postfix :     _lead
                   work_dir :     ./
                L-lead dim. :        12
@@ -81,8 +81,8 @@ Printed projectabilities to projectability.txt
   </ENERGY_GRID>
 
   <K-POINTS>
-       nkpts_par =    1
-       nrtot_par =    1
+       nkpts_par = 1
+       nrtot_par = 1
         use_sym = True
 
        Parallel kpoints grid:        nk = (   1   1    1 )   s = (   0   0    0 )
@@ -96,16 +96,6 @@ Printed projectabilities to projectability.txt
        Paralellization over frequencies
        # of processes:     1
   </PARALLELISM>
-
-  <MEMORY_USAGE>
-                smearing:           0.480 MB
-                 kpoints:           0.000 MB
-               workspace:           0.018 MB
-
- Total allocated. Memory:           0.498 MB
-  Real allocated. Memory:          85.496 MB
-  </MEMORY_USAGE>
-
 
   ======================================================================
   =                            Frequency Loop                          =
@@ -158,7 +148,7 @@ Printed projectabilities to projectability.txt
   Computing E(   180) =     -5.37838 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.09s
+    Total time spent up to now :     0.08s
 
   Computing E(   200) =     -5.19820 eV
   T matrix converged after avg. # of iterations      7.000
@@ -173,197 +163,197 @@ Printed projectabilities to projectability.txt
   Computing E(   240) =     -4.83784 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.13s
+    Total time spent up to now :     0.12s
 
   Computing E(   260) =     -4.65766 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.14s
+    Total time spent up to now :     0.13s
 
   Computing E(   280) =     -4.47748 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.16s
+    Total time spent up to now :     0.15s
 
   Computing E(   300) =     -4.29730 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.17s
+    Total time spent up to now :     0.16s
 
   Computing E(   320) =     -4.11712 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.18s
+    Total time spent up to now :     0.17s
 
   Computing E(   340) =     -3.93694 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.20s
+    Total time spent up to now :     0.18s
 
   Computing E(   360) =     -3.75676 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.21s
+    Total time spent up to now :     0.20s
 
   Computing E(   380) =     -3.57658 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.22s
+    Total time spent up to now :     0.21s
 
   Computing E(   400) =     -3.39640 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.24s
+    Total time spent up to now :     0.22s
 
   Computing E(   420) =     -3.21622 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.25s
+    Total time spent up to now :     0.23s
 
   Computing E(   440) =     -3.03604 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.26s
+    Total time spent up to now :     0.24s
 
   Computing E(   460) =     -2.85586 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.28s
+    Total time spent up to now :     0.26s
 
   Computing E(   480) =     -2.67568 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.29s
+    Total time spent up to now :     0.27s
 
   Computing E(   500) =     -2.49550 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.30s
+    Total time spent up to now :     0.28s
 
   Computing E(   520) =     -2.31532 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.32s
+    Total time spent up to now :     0.29s
 
   Computing E(   540) =     -2.13514 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.33s
+    Total time spent up to now :     0.30s
 
   Computing E(   560) =     -1.95495 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.34s
+    Total time spent up to now :     0.31s
 
   Computing E(   580) =     -1.77477 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.36s
+    Total time spent up to now :     0.33s
 
   Computing E(   600) =     -1.59459 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.37s
+    Total time spent up to now :     0.34s
 
   Computing E(   620) =     -1.41441 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.38s
+    Total time spent up to now :     0.35s
 
   Computing E(   640) =     -1.23423 eV
   T matrix converged after avg. # of iterations      3.000
 
-    Total time spent up to now :     0.39s
+    Total time spent up to now :     0.36s
 
   Computing E(   660) =     -1.05405 eV
   T matrix converged after avg. # of iterations      2.500
 
-    Total time spent up to now :     0.40s
+    Total time spent up to now :     0.36s
 
   Computing E(   680) =     -0.87387 eV
   T matrix converged after avg. # of iterations      2.000
 
-    Total time spent up to now :     0.41s
+    Total time spent up to now :     0.37s
 
   Computing E(   700) =     -0.69369 eV
   T matrix converged after avg. # of iterations      2.000
 
-    Total time spent up to now :     0.41s
+    Total time spent up to now :     0.38s
 
   Computing E(   720) =     -0.51351 eV
   T matrix converged after avg. # of iterations      2.000
 
-    Total time spent up to now :     0.42s
+    Total time spent up to now :     0.38s
 
   Computing E(   740) =     -0.33333 eV
   T matrix converged after avg. # of iterations      2.000
 
-    Total time spent up to now :     0.42s
+    Total time spent up to now :     0.39s
 
   Computing E(   760) =     -0.15315 eV
   T matrix converged after avg. # of iterations      6.000
 
-    Total time spent up to now :     0.43s
+    Total time spent up to now :     0.40s
 
   Computing E(   780) =      0.02703 eV
   T matrix converged after avg. # of iterations      6.500
 
-    Total time spent up to now :     0.45s
+    Total time spent up to now :     0.41s
 
   Computing E(   800) =      0.20721 eV
   T matrix converged after avg. # of iterations      6.500
 
-    Total time spent up to now :     0.46s
+    Total time spent up to now :     0.42s
 
   Computing E(   820) =      0.38739 eV
   T matrix converged after avg. # of iterations      6.500
 
-    Total time spent up to now :     0.47s
+    Total time spent up to now :     0.43s
 
   Computing E(   840) =      0.56757 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.48s
+    Total time spent up to now :     0.44s
 
   Computing E(   860) =      0.74775 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.50s
+    Total time spent up to now :     0.45s
 
   Computing E(   880) =      0.92793 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.51s
+    Total time spent up to now :     0.46s
 
   Computing E(   900) =      1.10811 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.52s
+    Total time spent up to now :     0.47s
 
   Computing E(   920) =      1.28829 eV
   T matrix converged after avg. # of iterations      7.000
 
-    Total time spent up to now :     0.54s
+    Total time spent up to now :     0.49s
 
   Computing E(   940) =      1.46847 eV
   T matrix converged after avg. # of iterations      7.500
 
-    Total time spent up to now :     0.55s
+    Total time spent up to now :     0.50s
 
   Computing E(   960) =      1.64865 eV
   T matrix converged after avg. # of iterations      7.500
 
-    Total time spent up to now :     0.57s
+    Total time spent up to now :     0.51s
 
   Computing E(   980) =      1.82883 eV
   T matrix converged after avg. # of iterations      7.500
 
-    Total time spent up to now :     0.58s
+    Total time spent up to now :     0.52s
 
   Computing E(   999) =      2.00000 eV
   T matrix converged after avg. # of iterations      7.500
 
-    Total time spent up to now :     0.60s
+    Total time spent up to now :     0.54s
 
   ======================================================================
   =                             Writing data                           =
@@ -374,17 +364,26 @@ Writing doscond to output/doscond_lead.dat
 <global routines>
              clock number :    14
 
-           conductor :     1.73s CPU
- atmproj_to_internal :     1.04s CPU
+           conductor :     0.00s CPU
+ atmproj_to_internal :     0.14s CPU
         compute_rham :     0.02s CPU (       5 calls,   0.004 s avg)
        smearing_init :     0.07s CPU
               cft_1z :     0.00s CPU
     hamiltonian_init :     0.02s CPU
          read_matrix :     0.02s CPU (       2 calls,   0.009 s avg)
          fourier_par :     0.00s CPU (       4 calls,   0.000 s avg)
-        do_conductor :     0.60s CPU
+        do_conductor :     0.54s CPU
    hamiltonian_setup :     0.02s CPU (    1000 calls,   0.000 s avg)
-            transfer :     0.48s CPU (    1000 calls,   0.000 s avg)
-               green :     0.03s CPU (    2000 calls,   0.000 s avg)
+            transfer :     0.43s CPU (    1000 calls,   0.000 s avg)
+               green :     0.02s CPU (    2000 calls,   0.000 s avg)
          gzero_maker :     0.00s CPU (    1000 calls,   0.000 s avg)
        transmittance :     0.01s CPU (    1000 calls,   0.000 s avg)
+
+  <MEMORY_USAGE>
+                smearing:           0.480 MB
+                 kpoints:           0.000 MB
+               workspace:           0.018 MB
+
+ Total allocated. Memory:           0.498 MB
+  Real allocated. Memory:          86.719 MB
+  </MEMORY_USAGE>

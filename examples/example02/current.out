@@ -1,2 +1,12 @@
-Reading transmittance data from ./output/conductance_lcr.dat
 Saved current vs bias to output/current.dat
+
+<global routines>
+             clock number :     1
+
+             current :     0.00s CPU
+
+  <MEMORY_USAGE>
+
+ Total allocated. Memory:           0.000 MB
+  Real allocated. Memory:          79.121 MB
+  </MEMORY_USAGE>
