@@ -369,24 +369,36 @@ def build_scheme1(
     atmproj_nbnd: int,
     natomwfc: int,
 ) -> np.ndarray:
+    """
+    Construct H(k) using scheme 1 (direct projector outer product).
+
+    Notes
+    -----
+    Matches Fortran `atmproj_to_internal` behavior:
+    - If `thr > 0.0`, only eigenvalue filtering is applied (`energy > sh`).
+      The projector weight filter present in older versions is commented
+      out in the Fortran code and is therefore disabled here.
+    - If `thr <= 0.0`, only eigenvalue filtering is applied as well.
+    - Normalization is applied if `do_norm` is True and weight > 1e-14.
+    """
     H = np.zeros((natomwfc, natomwfc), dtype=np.complex128)
     for ib in range(atmproj_nbnd):
         energy = eig[ib, ik, isp]
+        proj_b = proj[:, ib, ik, isp]
+        weight = np.vdot(proj_b, proj_b).real
+
         if opts.thr > 0.0:
-            proj_b = proj[:, ib, ik, isp]
-            weight = np.vdot(proj_b, proj_b).real
-            if energy > opts.sh or weight < opts.thr:
+            if energy > opts.sh:
                 continue
         else:
             if energy >= opts.sh:
                 continue
-            proj_b = proj[:, ib, ik, isp]
-            weight = np.vdot(proj_b, proj_b).real
 
         if opts.do_norm and weight > 1e-14:
-            proj_b /= np.sqrt(weight)
+            proj_b = proj_b / np.sqrt(weight)
 
         H += (energy - opts.sh) * np.outer(proj_b, proj_b.conj())
+
     return 0.5 * (H + H.conj().T)
 
 
@@ -397,6 +409,17 @@ def build_scheme2(
     isp: int,
     opts: HamiltonianOptions,
 ) -> np.ndarray:
+    """
+    Construct H(k) using scheme 2 (subspace projection).
+
+    Notes
+    -----
+    Matches Fortran `atmproj_to_internal` behavior:
+    - Selects only eigenvalues below the shift (`eig < sh`).
+    - Projector weight (`proj_wgt`) is always computed, even though
+      filtering is based only on eigenvalues.
+    - Normalization is applied if `do_norm` is True and weight > 1e-14.
+    """
     mask = [ib for ib in range(eig.shape[0]) if eig[ib, ik, isp] < opts.sh]
     if not mask:
         raise RuntimeError(f"No eigenvalues below shift at ik={ik}")
@@ -404,11 +427,10 @@ def build_scheme2(
     E = np.diag(eig[mask, ik, isp])
     A = proj[:, mask, ik, isp].copy()
 
-    if opts.do_norm:
-        for ib in range(A.shape[1]):
-            norm = np.vdot(A[:, ib], A[:, ib]).real
-            if norm > 1e-14:
-                A[:, ib] /= np.sqrt(norm)
+    for ib in range(A.shape[1]):
+        weight = np.vdot(A[:, ib], A[:, ib]).real
+        if opts.do_norm and weight > 1e-14:
+            A[:, ib] /= np.sqrt(weight)
 
     PA = A.conj().T @ A
     IPA = inv(PA)
