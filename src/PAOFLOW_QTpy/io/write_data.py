@@ -517,8 +517,8 @@ def write_operator_xml(
                         f'    <VR.{ir + 1} type="complex" size="{total_elements}">\n'
                     )
 
-                    for i in range(rows):
-                        for j in range(cols):
+                    for j in range(cols):
+                        for i in range(rows):
                             val = matrix[i, j]
                             f.write(f"{val.real: .15E},{val.imag: .15E}\n")
 
@@ -576,6 +576,7 @@ def write_kresolved_operator_xml(
     )
 
     write_operator_xml(
+        output_dir=Path(filename).parent,
         filename=filename,
         operator_matrix=operator_k[np.newaxis, ...],
         ivr=ivr_k,

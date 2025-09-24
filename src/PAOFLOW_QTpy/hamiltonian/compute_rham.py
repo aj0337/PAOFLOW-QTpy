@@ -46,7 +46,6 @@ def compute_rham(
     boundary conditions and correctly maps between reciprocal and real-space
     representations of the Hamiltonian.
     """
-
     nkpts, n, _ = Hk.shape
     Hr = np.zeros((n, n), dtype=np.complex128)
 
@@ -54,9 +53,7 @@ def compute_rham(
         arg = np.dot(kpts[:, ik], rvec)
         phase = np.cos(arg) - 1j * np.sin(arg)  # exp(-i * arg)
         weight = phase * wk[ik]
-
         for j in range(n):
             for i in range(n):
                 Hr[i, j] += weight * Hk[ik, i, j]
-
     return Hr

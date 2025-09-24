@@ -399,7 +399,8 @@ def build_scheme1(
 
         H += (energy - opts.sh) * np.outer(proj_b, proj_b.conj())
 
-    return 0.5 * (H + H.conj().T)
+        H = 0.5 * (H + H.conj().T)
+    return H.T
 
 
 def build_scheme2(
@@ -436,7 +437,8 @@ def build_scheme2(
     IPA = inv(PA)
     H_aux = (E - opts.sh * IPA) @ A.conj().T
     H = A @ H_aux
-    return 0.5 * (H + H.conj().T)
+    H = 0.5 * (H + H.conj().T)
+    return H.T
 
 
 def apply_overlap_transformation(H: np.ndarray, S: np.ndarray) -> np.ndarray:
