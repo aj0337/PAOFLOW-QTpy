@@ -224,6 +224,7 @@ def prepare_hamiltonian_blocks_and_leads(
         ispin=data.advanced.ispin,
         transport_direction=data.transport_direction,
         calculation_type=data.calculation_type,
+        conductor_data=data,
     )
 
     data.advanced.leads_are_identical = check_leads_are_identical(

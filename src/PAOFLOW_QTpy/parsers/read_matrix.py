@@ -88,16 +88,6 @@ def read_matrix(
     if cols_sgm == "all":
         cols_sgm = f"1-{dim2}"
 
-    irows = parse_index_array(rows, dim1)
-    icols = parse_index_array(cols, dim2)
-    irows_sgm = parse_index_array(rows_sgm, dim1)
-    icols_sgm = parse_index_array(cols_sgm, dim2)
-
-    opr.irows = irows
-    opr.icols = icols
-    opr.irows_sgm = irows_sgm
-    opr.icols_sgm = icols_sgm
-
     # === File parsing ===
     reader = IOTKReader(Path(filein))
     header = reader.read_header()
@@ -106,6 +96,16 @@ def read_matrix(
     nspin = header.get("nspin", 1)
     nrtot = header["nrtot"]
     lhave_ovp = header.get("have_overlap", False)
+
+    irows = parse_index_array(rows, ldimwann)
+    icols = parse_index_array(cols, ldimwann)
+    irows_sgm = parse_index_array(rows_sgm, ldimwann)
+    icols_sgm = parse_index_array(cols_sgm, ldimwann)
+
+    opr.irows = irows
+    opr.icols = icols
+    opr.irows_sgm = irows_sgm
+    opr.icols_sgm = icols_sgm
 
     if nspin == 2 and ispin < 0:
         raise ValueError("Unspecified ispin for spin-polarized case")

@@ -70,9 +70,10 @@ def parse_index_array(index_string: str, max_value: int, xval: int = -1) -> np.n
         else:
             indices.append(int(token) - 1)
 
-    if len(indices) != max_value:
-        raise ValueError(
-            f"Expected {max_value} entries, got {len(indices)} from: {index_string}"
-        )
+    for idx in indices:
+        if idx >= max_value:
+            raise ValueError(
+                f"Index {idx} exceeds max allowed value {max_value - 1} in: {index_string}"
+            )
 
     return np.array(indices, dtype=int)

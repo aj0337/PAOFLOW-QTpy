@@ -55,7 +55,11 @@ class HamiltonianSystem:
         self.blc_LC = OperatorBlock("block_LC")
         self.blc_CR = OperatorBlock("block_CR")
 
-    def allocate(self, ivr_par: np.ndarray) -> None:
+    def allocate(
+        self,
+        ivr_par: np.ndarray,
+        tag_dict: dict[str, dict[str, str]],
+    ) -> None:
         """
         Allocate memory for all matrix blocks and initialize their metadata.
 
@@ -82,12 +86,15 @@ class HamiltonianSystem:
 
         for block, d1, d2 in block_specs:
             block.allocate(d1, d2, self.nkpts_par)
-            block.tag = {
-                "rows": "all",
-                "cols": "all",
-                "rows_sgm": "all",
-                "cols_sgm": "all",
-            }
+            block.tag = tag_dict.get(
+                block.name,
+                {
+                    "rows": "all",
+                    "cols": "all",
+                    "rows_sgm": "all",
+                    "cols_sgm": "all",
+                },
+            )
             block.ivr_par = ivr_par
 
         self.allocated = True

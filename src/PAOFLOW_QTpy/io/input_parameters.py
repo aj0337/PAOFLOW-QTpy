@@ -376,6 +376,42 @@ class ConductorData(PydanticBaseModel):
             raise ValueError("dimC needs to be positive")
         return value
 
+    @property
+    def hamiltonian_tags(self) -> dict[str, dict[str, str]]:
+        """
+        Extracts the tag dictionary for each Hamiltonian block
+        from the `hamiltonian_data` section.
+
+        Returns
+        -------
+        `tag_dict` : dict
+            Dictionary mapping OperatorBlock names to tag dicts.
+        """
+        tag_dict = {}
+
+        hdata = self.hamiltonian
+        name_map = {
+            "H00_C": "block_00C",
+            "H_CR": "block_CR",
+            "H_LC": "block_LC",
+            "H00_L": "block_00L",
+            "H01_L": "block_01L",
+            "H00_R": "block_00R",
+            "H01_R": "block_01R",
+        }
+
+        for yaml_name, block_name in name_map.items():
+            entry = getattr(hdata, yaml_name)
+            if entry is not None:
+                tag_dict[block_name] = {
+                    "rows": entry.get("rows", "all"),
+                    "cols": entry.get("cols", "all"),
+                    "rows_sgm": entry.get("rows_sgm", entry.get("rows", "all")),
+                    "cols_sgm": entry.get("cols_sgm", entry.get("cols", "all")),
+                }
+
+        return tag_dict
+
 
 class CurrentData(PydanticBaseModel):
     filein: str

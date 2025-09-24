@@ -5,6 +5,7 @@ import numpy as np
 from typing import Literal
 
 from PAOFLOW_QTpy.hamiltonian.hamiltonian import HamiltonianSystem
+from PAOFLOW_QTpy.io.input_parameters import ConductorData
 from PAOFLOW_QTpy.parsers.read_matrix import read_matrix
 from PAOFLOW_QTpy.utils.timing import timed_function
 
@@ -22,7 +23,7 @@ def initialize_hamiltonian_blocks(
     calculation_type: Literal["conductor", "bulk"],
     datafile_L: str = "",
     datafile_R: str = "",
-    hamiltonian_data: dict[str, dict[str, str]] = {},
+    conductor_data: ConductorData | None = None,
 ) -> None:
     """
     Initialize all Hamiltonian and overlap matrix blocks for the transport system.
@@ -66,17 +67,7 @@ def initialize_hamiltonian_blocks(
         else:
             raise ValueError(f"Invalid transport_direction: {transport_direction}")
 
-    ham_system.allocate(ivr_par3D)
-
-    ham_system.blc_00C.tag = hamiltonian_data.get("H00_C", {})
-    ham_system.blc_CR.tag = hamiltonian_data.get("H_CR", {})
-
-    if calculation_type == "conductor":
-        ham_system.blc_LC.tag = hamiltonian_data.get("H_LC", {})
-        ham_system.blc_00L.tag = hamiltonian_data.get("H00_L", {})
-        ham_system.blc_01L.tag = hamiltonian_data.get("H01_L", {})
-        ham_system.blc_00R.tag = hamiltonian_data.get("H00_R", {})
-        ham_system.blc_01R.tag = hamiltonian_data.get("H01_R", {})
+    ham_system.allocate(ivr_par3D, conductor_data.hamiltonian_tags)
 
     ivr_par2D = extract_2D_ivrs(ivr_par3D, transport_direction)
 
