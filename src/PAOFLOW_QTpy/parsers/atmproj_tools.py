@@ -197,7 +197,6 @@ def parse_atomic_proj_xml(file_proj: str, lattice_data: Dict) -> AtomicProjData:
     - EIGENVALUES and PROJECTIONS blocks, nested by k-points and optionally by spin.
     - OVERLAPS block if present.
     """
-
     log_section_start("atmproj_read_ext")
     log_section_start("reading eigenvalues")
 

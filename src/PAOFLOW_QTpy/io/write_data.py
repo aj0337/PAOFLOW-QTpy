@@ -418,7 +418,6 @@ def write_operator_xml(
     This function mimics the Fortran subroutine operator_write_aux exactly, including
     formatting, spacing, and element ordering.
     """
-
     if dynamical and grid is None:
         raise ValueError("grid must be present for dynamical operators")
     if dynamical and not analyticity:

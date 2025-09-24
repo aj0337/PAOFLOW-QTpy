@@ -71,7 +71,6 @@ def evaluate_transmittance(
         Eigenvalues w < 0 are clipped to 0 for numerical stability, and an error is raised
         if any eigenvalue is found to be significantly negative (< -1e-6).
     """
-
     assert gamma_L.shape == gamma_R.shape == G_ret.shape
     dim = gamma_L.shape[0]
 

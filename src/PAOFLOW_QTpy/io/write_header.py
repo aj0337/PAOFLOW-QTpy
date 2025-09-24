@@ -15,7 +15,6 @@ def write_header(msg: str) -> None:
     ValueError
         If the message exceeds 66 characters.
     """
-
     if len(msg) >= 66:
         raise ValueError(f"Message longer than 66 characters: {msg}")
 

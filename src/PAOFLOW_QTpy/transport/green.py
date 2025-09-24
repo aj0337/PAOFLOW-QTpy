@@ -128,7 +128,6 @@ def compute_conductor_green_function(
 
         G_C = [ ω·S_C − H_C − Σ_L ]⁻¹
     """
-
     g0inv = compute_non_interacting_gf(
         blc_00C=blc_00C,
         smearing_type=smearing_type,

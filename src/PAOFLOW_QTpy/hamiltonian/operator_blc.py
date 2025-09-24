@@ -317,7 +317,6 @@ class OperatorBlock:
         `transport_direction` : int
             Direction of transport (1=x, 2=y, 3=z).
         """
-
         ivr_par_2d, _ = compute_ivr_par(nr_par)
         self.ivr_par = ivr_par_2d
 

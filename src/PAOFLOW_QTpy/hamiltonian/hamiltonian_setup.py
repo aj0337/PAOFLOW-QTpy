@@ -48,7 +48,6 @@ def hamiltonian_setup(
     This function modifies the `aux` attribute in-place for each allocated block:
         `aux = (E - shift) * S[..., ik] - H[..., ik] - sgm[..., ik, ie_bl]`
     """
-
     omega = egrid[ie_g]
     ie_bl = ie_buff if ie_buff is not None else 1
 

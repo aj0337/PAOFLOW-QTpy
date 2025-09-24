@@ -328,7 +328,6 @@ def initialize_r_vectors(
         if transport_direction == 2: (R1, 0, R2)
         if transport_direction == 3: (R1, R2, 0)
     """
-
     nx, ny = nr_par
     R_list = []
     w_list = []

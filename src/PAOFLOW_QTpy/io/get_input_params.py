@@ -28,7 +28,6 @@ def load_conductor_data_from_yaml(yaml_path: str, comm=None) -> ConductorData:
     ConductorData
         Validated ConductorData object.
     """
-
     full_yaml = get_input_from_yaml(yaml_path)
     merged = {}
     for section in ("input_conductor", "hamiltonian_data"):
@@ -51,6 +50,5 @@ def load_current_data_from_yaml(yaml_path: str) -> dict | None:
     dict or None
         Parsed dictionary of input parameters if file exists, otherwise None.
     """
-
     validated = CurrentData(filename=yaml_path, validate=True)
     return validated.model_dump()

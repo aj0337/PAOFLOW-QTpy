@@ -60,7 +60,6 @@ def read_matrix(
     the transport axis to obtain the k-resolved operator block.
 
     """
-
     if not opr.allocated:
         raise RuntimeError("OperatorBlock is not allocated")
 
