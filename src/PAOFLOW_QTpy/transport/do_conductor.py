@@ -113,7 +113,7 @@ class ConductorCalculator:
            where ``Γ_{L/R} = i (Σ_{L/R} - Σ_{L/R}†)``.
         """
         self.conduct, self.dos, self.conduct_k, self.dos_k = self.initialize_outputs()
-        ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size)
+        ie_start, ie_end = divide_work(0, self.ne - 1, self.rank, self.size, "energies")
         for ie_g in range(ie_start, ie_end + 1):
             self.conduct, self.dos = self.process_energy(
                 self.conduct,

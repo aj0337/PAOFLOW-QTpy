@@ -34,6 +34,13 @@ def log_rank0(message: str):
         print(message)
 
 
+def log_parallelization_info(chunks: int, items: str):
+    if rank == 0:
+        print(
+            f"Parallelization information: Each rank processes approximately {chunks} {items}."
+        )
+
+
 def log_section_start(name: str):
     log_rank0(f"Started {name}")
 
