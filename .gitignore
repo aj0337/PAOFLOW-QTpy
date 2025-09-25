@@ -138,4 +138,4 @@ dmypy.json
 *.ham
 *.txt
 .ruff_cache/
-!Reference/**
+!**/Reference/**
