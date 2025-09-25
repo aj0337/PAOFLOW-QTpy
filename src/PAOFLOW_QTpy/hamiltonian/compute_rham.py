@@ -9,7 +9,8 @@ def compute_rham(
     kpts: np.ndarray,
     wk: np.ndarray,
 ) -> np.ndarray:
-    """
+    """Compute the real-space Hamiltonian.
+
     Perform an inverse Fourier transform to compute the real-space Hamiltonian
     corresponding to a single lattice vector.
 

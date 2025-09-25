@@ -8,8 +8,7 @@ def fourier_transform_real_to_kspace(
     wr: np.ndarray,
     table: np.ndarray,
 ) -> np.ndarray:
-    """
-    Perform a 2D Fourier transform from real space to reciprocal space.
+    """Perform a 2D Fourier transform from real space to reciprocal space.
 
     Parameters
     ----------
