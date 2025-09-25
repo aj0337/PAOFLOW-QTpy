@@ -95,7 +95,9 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
 
 
 def prepare_smearing(
-    smearing_func: Callable[[float, str], float], memory_tracker: MemoryTracker
+    data: ConductorData,
+    smearing_func: Callable[[float, str], float],
+    memory_tracker: MemoryTracker,
 ) -> SmearingData:
     """
     Initialize smearing data and register it with the memory tracker.
@@ -113,7 +115,12 @@ def prepare_smearing(
         Initialized smearing data object.
     """
     smearing_data = SmearingData(smearing_func=smearing_func)
-    smearing_data.initialize()
+    smearing_data.initialize(
+        smearing_type=data.energy.smearing_type,
+        delta=data.energy.delta,
+        delta_ratio=data.energy.delta_ratio,
+        xmax=data.energy.xmax,
+    )
     memory_tracker.register_section(
         "smearing", smearing_data.memory_usage, is_allocated=True
     )

@@ -5,10 +5,10 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 
 
 def initialize_smearing_grid(
-    smearing_type: str = "lorentzian",
-    delta: float = 1e-5,
-    delta_ratio: float = 5e-3,
-    xmax: float = 25.0,
+    smearing_type: str,
+    delta: float,
+    delta_ratio: float,
+    xmax: float,
     *,
     smearing_func: Callable[[float, str], float],
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -113,10 +113,10 @@ class SmearingData:
     @timed_function("smearing_init")
     def initialize(
         self,
-        smearing_type: str = "lorentzian",
-        delta: float = 1e-5,
-        delta_ratio: float = 5e-3,
-        xmax: float = 25.0,
+        smearing_type: str,
+        delta: float,
+        delta_ratio: float,
+        xmax: float,
     ):
         """
         Initialize the smearing grid and compute `g_smear` values.

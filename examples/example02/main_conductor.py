@@ -25,7 +25,7 @@ def main():
     data = prepare_conductor(yaml_file)
     memory_tracker = MemoryTracker()
 
-    _ = prepare_smearing(smearing_func, memory_tracker)
+    _ = prepare_smearing(data, smearing_func, memory_tracker)
 
     _ = prepare_kpoints(data, memory_tracker)
 
