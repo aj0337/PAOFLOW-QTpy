@@ -17,9 +17,19 @@ from PAOFLOW_QTpy.io.write_header import headered_function
 from PAOFLOW_QTpy.transport.leads_self_energy import build_self_energies_from_blocks
 from PAOFLOW_QTpy.transport.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
+from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
+
+from PAOFLOW_QTpy.workspace.prepare_data import (
+    prepare_conductor,
+    prepare_hamiltonian_blocks_and_leads,
+    prepare_hamiltonian_system,
+    prepare_kpoints,
+    prepare_smearing,
+    prepare_workspace,
+)
 
 
 class ConductorCalculator:
@@ -126,7 +136,6 @@ class ConductorCalculator:
             )
         self.reduce_results(self.conduct, self.dos, self.conduct_k, self.dos_k)
         self.write_operators()
-        return self.conduct, self.dos, self.conduct_k, self.dos_k
 
     def initialize_outputs(self):
         """
@@ -556,3 +565,24 @@ class ConductorCalculator:
                 with (output_dir / filename_dos).open("w") as f:
                     for ie in range(self.egrid.shape[0]):
                         f.write(f"{self.egrid[ie]:15.9f} {self.dos_k[ie, ik]:15.9f}\n")
+
+
+class ConductorRunner:
+    @classmethod
+    def from_yaml(cls, yaml_file: str):
+        data = prepare_conductor(yaml_file)
+        memory_tracker = MemoryTracker()
+
+        _ = prepare_smearing(data, memory_tracker)
+        _ = prepare_kpoints(data, memory_tracker)
+        ham_sys = prepare_hamiltonian_system(data, memory_tracker)
+        prepare_hamiltonian_blocks_and_leads(data, ham_sys)
+        _ = prepare_workspace(data, memory_tracker)
+
+        calculator = ConductorCalculator(data=data, blc_blocks=ham_sys.blocks)
+
+        return cls(calculator, memory_tracker)
+
+    def __init__(self, calculator: ConductorCalculator, memory_tracker: MemoryTracker):
+        self.calculator = calculator
+        self.memory_tracker = memory_tracker

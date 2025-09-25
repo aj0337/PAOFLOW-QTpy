@@ -4,6 +4,8 @@ from typing import Tuple
 from mpi4py import MPI
 
 from PAOFLOW_QTpy.utils.locate import locate
+from PAOFLOW_QTpy.utils.memusage import MemoryTracker
+from PAOFLOW_QTpy.workspace.prepare_data import prepare_current
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -230,3 +232,18 @@ class CurrentCalculator:
         outpath.parent.mkdir(parents=True, exist_ok=True)
         np.savetxt(outpath, np.column_stack([self.vgrid, self.currents]))
         print(f"Saved current vs bias to {outpath}")
+
+
+class CurrentRunner:
+    @classmethod
+    def from_yaml(cls, yaml_file: str):
+        data = prepare_current(yaml_file)
+        memory_tracker = MemoryTracker()
+
+        calculator = CurrentCalculator(data)
+
+        return cls(calculator, memory_tracker)
+
+    def __init__(self, calculator: CurrentCalculator, memory_tracker: MemoryTracker):
+        self.calculator = calculator
+        self.memory_tracker = memory_tracker
