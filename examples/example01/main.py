@@ -10,7 +10,6 @@ from PAOFLOW_QTpy.workspace.prepare_data import (
     prepare_smearing,
     prepare_workspace,
 )
-from PAOFLOW_QTpy.smearing.smearing_base import smearing_func
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
 
@@ -23,7 +22,7 @@ def main():
     data = prepare_conductor(yaml_file)
     memory_tracker = MemoryTracker()
 
-    _ = prepare_smearing(data, smearing_func, memory_tracker)
+    _ = prepare_smearing(data, memory_tracker)
 
     _ = prepare_kpoints(data, memory_tracker)
 

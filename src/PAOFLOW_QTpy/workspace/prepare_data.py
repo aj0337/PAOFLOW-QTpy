@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Callable
 
 from mpi4py import MPI
 
@@ -27,6 +26,7 @@ from PAOFLOW_QTpy.io.log_module import log_startup
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
 from PAOFLOW_QTpy.smearing.smearing_T import SmearingData
+from PAOFLOW_QTpy.smearing.smearing_base import smearing_func
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.workspace.workspace import Workspace
 
@@ -96,7 +96,6 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
 
 def prepare_smearing(
     data: ConductorData,
-    smearing_func: Callable[[float, str], float],
     memory_tracker: MemoryTracker,
 ) -> SmearingData:
     """
@@ -104,8 +103,6 @@ def prepare_smearing(
 
     Parameters
     ----------
-    smearing_func : callable
-        Smearing function to be used for broadening.
     memory_tracker : MemoryTracker
         Tracker to record memory usage.
 
