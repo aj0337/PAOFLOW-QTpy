@@ -255,26 +255,30 @@ class ConductorData(PydanticBaseModel):
         return self._runtime
 
     def __init__(self, filename: str, *, validate: bool = True, **data: Any) -> None:
-        def filter_keys(cls, d):
-            return {k: d[k] for k in cls.__fields__ if k in d}
+        invalid_fields: dict[str, list[str]] = {}
+        validated_data = {}
 
-        data["file_names"] = FileNamesData(**filter_keys(FileNamesData, data))
-        data["hamiltonian"] = HamiltonianData(**filter_keys(HamiltonianData, data))
-        data["kpoint_grid"] = KPointGridSettings(
-            **filter_keys(KPointGridSettings, data)
-        )
-        data["energy"] = EnergySettings(**filter_keys(EnergySettings, data))
-        data["symmetry"] = SymmetryOutputOptions(
-            **filter_keys(SymmetryOutputOptions, data)
-        )
-        data["iteration"] = IterationConvergenceSettings(
-            **filter_keys(IterationConvergenceSettings, data)
-        )
-        data["atomic_proj"] = AtomicProjectionOverlapSettings(
-            **filter_keys(AtomicProjectionOverlapSettings, data)
-        )
-        data["advanced"] = AdvancedSettings(**filter_keys(AdvancedSettings, data))
-        for key in [
+        def extract_block(cls, fieldname: str) -> dict[str, Any]:
+            block = {}
+            valid_keys = cls.model_fields.keys()
+            for key in valid_keys:
+                if key in data:
+                    block[key] = data.pop(key)
+            try:
+                validated_data[fieldname] = cls(**block)
+            except Exception as e:
+                raise ValueError(f"Error validating block '{fieldname}': {e}") from e
+
+        extract_block(FileNamesData, "file_names")
+        extract_block(HamiltonianData, "hamiltonian")
+        extract_block(KPointGridSettings, "kpoint_grid")
+        extract_block(EnergySettings, "energy")
+        extract_block(SymmetryOutputOptions, "symmetry")
+        extract_block(IterationConvergenceSettings, "iteration")
+        extract_block(AtomicProjectionOverlapSettings, "atomic_proj")
+        extract_block(AdvancedSettings, "advanced")
+
+        top_level_keys = {
             "dimL",
             "dimR",
             "dimC",
@@ -289,10 +293,24 @@ class ConductorData(PydanticBaseModel):
             "shift_C",
             "shift_R",
             "shift_corr",
-        ]:
+        }
+
+        unknown_keys = set(data) - top_level_keys
+        if unknown_keys:
+            invalid_fields["input_conductor"] = sorted(unknown_keys)
+
+        for key in top_level_keys:
             if key in data:
-                data[key] = data[key]
-        super().__init__(**data)
+                validated_data[key] = data[key]
+
+        if invalid_fields:
+            message = "Invalid fields found in input YAML:\n"
+            for section, keys in invalid_fields.items():
+                message += f"  - {section}: {keys}\n"
+            raise ValueError(message.strip())
+
+        super().__init__(**validated_data)
+
         if validate:
             self.validate_input()
 
