@@ -99,20 +99,22 @@ def write_data(
     fmt = f"{{:{width}.{precision}f}}"
 
     with filepath.open("w") as f:
-        if label == "conductance":
-            f.write("# E (eV)   cond(E)\n")
-        elif label == "doscond":
-            f.write("# E (eV)   doscond(E)\n")
-
-        ne = egrid.shape[0]
         if data.ndim == 1:
-            for ie in range(ne):
-                f.write(f"{fmt.format(egrid[ie])}{fmt.format(data[ie])}\n")
+            f.write(f"# E (eV)   {label}(E)\n")
+            for e, val in zip(egrid, data):
+                f.write(f"{fmt.format(e)}{fmt.format(val)}\n")
         else:
-            dim = data.shape[0]
-            for ie in range(ne):
-                values = " ".join(fmt.format(data[i, ie]) for i in range(dim))
-                f.write(f"{fmt.format(egrid[ie])}{values}\n")
+            dim, ne = data.shape
+            if dim == 1:
+                f.write(f"# E (eV)   {label}(E)\n")
+                for ie in range(ne):
+                    f.write(f"{fmt.format(egrid[ie])}{fmt.format(data[0, ie])}\n")
+            else:
+                header_channels = " ".join(f"channel_{i + 1}" for i in range(dim))
+                f.write(f"# E (eV)   {label}_total {header_channels}\n")
+                for ie in range(ne):
+                    values = " ".join(fmt.format(data[i, ie]) for i in range(dim))
+                    f.write(f"{fmt.format(egrid[ie])}{values}\n")
 
     if verbose:
         print(f"Writing {label} to {filepath}")
