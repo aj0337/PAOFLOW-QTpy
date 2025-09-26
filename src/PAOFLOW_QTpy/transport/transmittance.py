@@ -78,14 +78,14 @@ def evaluate_transmittance(
     work = gamma_L @ G_ret
 
     if do_eigenchannels:
-        A_L = G_adv @ work  # G^a Gamma_L G^r
+        A_L = G_adv @ work
     else:
         work = G_adv @ work
 
     if formula == "generalized":
         assert (
             sgm_corr is not None
-        ), "Correlation self-energy must be provided for generalized formula."
+        ), "Correlation self-energy required for generalized formula."
         lambda_corr = 1j * (sgm_corr - sgm_corr.conj().T)
         regularized = gamma_L + gamma_R + 2 * eta * np.eye(dim)
         lambda_mat = solve(regularized, lambda_corr)
@@ -100,26 +100,35 @@ def evaluate_transmittance(
         conduct = np.real(np.diag(Tmat))
         return conduct, None
 
+    # -----------------------------------------------------
+    # Eigenchannels, no eigplot: √Γ_R (G^a Γ_L G^r) √Γ_R
+    # -----------------------------------------------------
     elif do_eigenchannels and not do_eigplot:
-        Tmat = gamma_R @ A_L
-        if S_overlap is not None:
-            evals, _ = eigh(Tmat @ lambda_mat, S_overlap)
-        else:
-            evals, _ = eigh(Tmat @ lambda_mat)
-        conduct = np.real(np.sort(evals))
-        return conduct, None
+        evals_R, vecs_R = eigh(gamma_R)
+        evals_R = np.clip(evals_R, 0.0, None)
+        sqrt_gamma_R = vecs_R @ np.diag(np.sqrt(evals_R)) @ vecs_R.conj().T
 
+        Tmat = sqrt_gamma_R @ A_L @ sqrt_gamma_R
+        if formula == "generalized":
+            Tmat = Tmat @ lambda_mat
+
+        evals, _ = eigh(-Tmat) if S_overlap is None else eigh(-Tmat, S_overlap)
+        conduct = -np.real(evals)
+        return conduct, None
+    # ----------------------------------------------------------------------
+    # Eigenchannels with eigplot: √(G^a Γ_L G^r) Γ_R √(G^a Γ_L G^r)
+    # ----------------------------------------------------------------------
     elif do_eigenchannels and do_eigplot:
         evals, vecs = eigh(A_L, S_overlap) if S_overlap is not None else eigh(A_L)
         if np.any(evals < -1e-6):
-            raise ValueError(
-                "A_L is not positive semi-definite; encountered eigenvalues < -1e-6."
-            )
-        evals = np.where(evals < 0.0, 0.0, evals)
+            raise ValueError("A_L not positive semi-definite.")
+        evals = np.clip(evals, 0.0, None)
+
         sqrt_A_L = vecs @ np.diag(np.sqrt(evals)) @ vecs.conj().T
         Tmat = sqrt_A_L @ gamma_R @ sqrt_A_L
-        evals, vecs = eigh(Tmat, S_overlap) if S_overlap is not None else eigh(Tmat)
-        conduct = np.real(np.sort(evals))
+
+        evals, vecs = eigh(-Tmat, S_overlap) if S_overlap is not None else eigh(-Tmat)
+        conduct = -np.real(evals)
         return conduct, vecs
 
     else:
