@@ -1,0 +1,38 @@
+
+  ======================================================================
+              =                                            =
+              =     *** WanT *** Wannier Transport Code    =
+              =        (www.wannier-transport.org)         =
+              =      Ultra Soft Pseudopotential Implem.    =
+              =                                            =
+  ======================================================================
+
+
+  Program <current>  v. 2.6.0devel  starts ...
+  Date 11Sep2025 at 16:38:45
+
+     Serial run.
+
+
+
+          BUILT :    Mi 03 Sep 2025 10:43:16
+           HOST :    x86_64-unknown-linux-gnu
+           ARCH :    x86_64
+             CC :    cc
+            CPP :    cpp
+            F90 :    gfortran
+            F77 :    gfortran
+         DFLAGS :    -D__GFORTRAN -D__STD_F95 -D__FFTW
+      BLAS LIBS :    -L/home/anooja/Work/software/PAOFLOW/externals/transportPAO/extlibs/blas/lib -lblas
+    LAPACK LIBS :    -L/home/anooja/Work/software/PAOFLOW/externals/transportPAO/extlibs/lapack/lib -llapack
+       FFT LIBS :
+      MASS LIBS :
+
+
+
+  ======================================================================
+
+   <global routines>
+             clock number :     1
+
+                  current :     0.00s CPU
