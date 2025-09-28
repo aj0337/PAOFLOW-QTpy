@@ -8,7 +8,7 @@ EXAMPLES_DIR = Path("examples")
 REFERENCE_DIR = Path("tests/reference/Fortran")
 
 
-examples = ["example01", "example02"]
+examples = ["example01", "example02", "example04"]
 
 
 def collect_dat_files(example_name: str):
