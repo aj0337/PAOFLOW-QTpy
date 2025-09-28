@@ -22,6 +22,8 @@ See [README_current.input](README_current.input) for details on input flags to c
 
 See the [examples](examples) folder for usage examples.
 
+`analysis.ipynb` contains code to plot the results. It compares the results from the Python version with the Fortran version.
+
 ## Example01:
 
 Demonstrates how to compute electron conductance and DOS using a bulk Al.
