@@ -54,7 +54,7 @@ calculation_type    STRING
             "bulk": transport in a bulk system
             DEFAULT: "conductor"
 
-transport_dir   INTEGER
+transport_direction   INTEGER
             transport direction according to crystal axis indexing
             DEFAULT : mandatory
 
