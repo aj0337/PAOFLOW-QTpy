@@ -19,6 +19,7 @@ from PAOFLOW_QTpy.transport.transmittance import evaluate_transmittance
 from PAOFLOW_QTpy.utils.divide_et_impera import divide_work
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
 from PAOFLOW_QTpy.utils.timing import global_timing, timed_function
+from PAOFLOW_QTpy.utils.constants import rydcm1, amconv
 from PAOFLOW_QTpy.hamiltonian.compute_rham import compute_rham
 from PAOFLOW_QTpy.io.get_input_params import ConductorData
 
@@ -202,7 +203,11 @@ class ConductorCalculator:
         """
         nprint = self.data.iteration.nprint
         if (ie_g % nprint == 0 or ie_g == 0 or ie_g == self.ne - 1) and self.rank == 0:
-            print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
+            if self.data.carriers == "phonons":
+                omega_val = np.sqrt(self.egrid[ie_g] * rydcm1**2 / amconv)
+                print(f"  Computing omega({ie_g:6d}) = {omega_val:12.5f} cm-1")
+            else:
+                print(f"  Computing E({ie_g:6d}) = {self.egrid[ie_g]:12.5f} eV")
 
         gC_k, sgmL_k, sgmR_k = self.initialize_k_dependent()
         avg_iter = 0.0
@@ -542,8 +547,13 @@ class ConductorCalculator:
         output_dir.mkdir(parents=True, exist_ok=True)
         postfix = self.data.file_names.postfix
 
-        write_data(self.egrid, self.conduct, "conductance", output_dir, postfix=postfix)
-        write_data(self.egrid, self.dos, "doscond", output_dir, postfix=postfix)
+        if self.data.carriers == "phonons":
+            egrid_out = np.sqrt(self.egrid * rydcm1**2 / amconv)
+        else:
+            egrid_out = self.egrid
+
+        write_data(egrid_out, self.conduct, "conductance", output_dir, postfix=postfix)
+        write_data(egrid_out, self.dos, "doscond", output_dir, postfix=postfix)
 
         if self.data.symmetry.write_kdata:
             nkpts_par = self.data.get_runtime_data().nkpts_par

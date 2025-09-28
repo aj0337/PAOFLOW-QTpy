@@ -5,5 +5,855 @@
               =                                            =
 ======================================================================
 Program <conductor.py>  v. 0.0.1  starts ...
-Date 2025-09-28 at 15:02:54
+Date 2025-09-28 at 18:07:35
 Number of MPI processes:    1
+
+  ======================================================================
+  =  INPUT Summary                                                     =
+  ======================================================================
+
+  <INPUT>
+          Calculation Type :     bulk
+                    prefix :     cnhn
+                   postfix :
+                  work_dir :     ./
+               L-lead dim. :        48
+            conductor dim. :        48
+               R-lead dim. :        48
+       Conductance Formula :     landauer
+                  Carriers :     phonons
+       Transport Direction :         1
+          Have Correlation :     False
+              Write k-data :     False
+            Write sgm lead :     False
+                Write gf C :     False
+           Max iter number :       200
+                    nprint :        20
+
+        Conductor datafile :     ./ext.ham
+         leads are identical :     True
+           ovp orthogonaliz. :     False
+  </INPUT>
+
+  <ENERGY_GRID>
+                 Dimension :      3000
+                 Buffering :         1
+            Min Frequency :   0.00000
+            Max Frequency :9610000.00000
+              Energy Step :13213.48380
+                     Delta :   0.00000
+             Smearing Type :     lorentzian
+             Smearing grid :     20000
+             Smearing gmax :  25.00000
+                   Shift_L :   0.00000
+                   Shift_C :   0.00000
+                   Shift_R :   0.00000
+                Shift_corr :   0.00000
+  </ENERGY_GRID>
+
+  <K-POINTS>
+       nkpts_par = 1
+       nrtot_par = 1
+        use_sym = True
+
+       Parallel kpoints grid:        nk = (   1   1    1 )   s = (   0   0    0 )
+       k (  1) =    (   0.00000   0.00000   0.00000 ),   weight =   1.0000
+
+       Parallel R vector grid:       nr = (   1   1    1 )
+       R (  1) =    (   0.00000   0.00000   0.00000 ),   weight =   1.0000
+  </K-POINTS>
+
+  <PARALLELISM>
+       Paralellization over frequencies
+       # of processes:     1
+  </PARALLELISM>
+
+  ======================================================================
+  =                            Frequency Loop                          =
+  ======================================================================
+Parallelization information: Each rank processes approximately 3000 energies.
+  Computing omega(     0) =      5.66074 cm-1
+  T matrix converged after avg. # of iterations     10.000
+
+    Total time spent up to now :     0.01s
+
+  Computing omega(    20) =    253.15614 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     0.11s
+
+  Computing omega(    40) =    358.01684 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     0.23s
+
+  Computing omega(    60) =    438.47929 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     0.34s
+
+  Computing omega(    80) =    506.31227 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     0.46s
+
+  Computing omega(   100) =    566.07433 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     0.58s
+
+  Computing omega(   120) =    620.10336 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     0.69s
+
+  Computing omega(   140) =    669.78818 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     0.76s
+
+  Computing omega(   160) =    716.03368 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     0.78s
+
+  Computing omega(   180) =    759.46841 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     0.81s
+
+  Computing omega(   200) =    800.54999 cm-1
+  T matrix converged after avg. # of iterations     10.000
+
+    Total time spent up to now :     0.85s
+
+  Computing omega(   220) =    839.62392 cm-1
+  T matrix converged after avg. # of iterations     10.500
+
+    Total time spent up to now :     0.96s
+
+  Computing omega(   240) =    876.95858 cm-1
+  T matrix converged after avg. # of iterations     10.500
+
+    Total time spent up to now :     1.06s
+
+  Computing omega(   260) =    912.76743 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.18s
+
+  Computing omega(   280) =    947.22353 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.29s
+
+  Computing omega(   300) =    980.46950 cm-1
+  T matrix converged after avg. # of iterations     10.500
+
+    Total time spent up to now :     1.40s
+
+  Computing omega(   320) =   1012.62455 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     1.49s
+
+  Computing omega(   340) =   1043.78949 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     1.51s
+
+  Computing omega(   360) =   1074.05052 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     1.53s
+
+  Computing omega(   380) =   1103.48202 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     1.56s
+
+  Computing omega(   400) =   1132.14866 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.61s
+
+  Computing omega(   420) =   1160.10716 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.73s
+
+  Computing omega(   440) =   1187.40753 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.84s
+
+  Computing omega(   460) =   1214.09418 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     1.96s
+
+  Computing omega(   480) =   1240.20672 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     2.07s
+
+  Computing omega(   500) =   1265.78068 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     2.18s
+
+  Computing omega(   520) =   1290.84808 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     2.30s
+
+  Computing omega(   540) =   1315.43787 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     2.42s
+
+  Computing omega(   560) =   1339.57636 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     2.54s
+
+  Computing omega(   580) =   1363.28752 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     2.65s
+
+  Computing omega(   600) =   1386.59326 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     2.77s
+
+  Computing omega(   620) =   1409.51371 cm-1
+  T matrix converged after avg. # of iterations      2.000
+
+    Total time spent up to now :     2.83s
+
+  Computing omega(   640) =   1432.06737 cm-1
+  T matrix converged after avg. # of iterations      2.000
+
+    Total time spent up to now :     2.86s
+
+  Computing omega(   660) =   1454.27128 cm-1
+  T matrix converged after avg. # of iterations      2.000
+
+    Total time spent up to now :     2.89s
+
+  Computing omega(   680) =   1476.14125 cm-1
+  T matrix converged after avg. # of iterations      2.000
+
+    Total time spent up to now :     2.92s
+
+  Computing omega(   700) =   1497.69190 cm-1
+  T matrix converged after avg. # of iterations      2.500
+
+    Total time spent up to now :     2.95s
+
+  Computing omega(   720) =   1518.93682 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     3.06s
+
+  Computing omega(   740) =   1539.88866 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     3.17s
+
+  Computing omega(   760) =   1560.55923 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     3.29s
+
+  Computing omega(   780) =   1580.95956 cm-1
+  T matrix converged after avg. # of iterations     11.500
+
+    Total time spent up to now :     3.40s
+
+  Computing omega(   800) =   1601.09999 cm-1
+  T matrix converged after avg. # of iterations     11.000
+
+    Total time spent up to now :     3.52s
+
+  Computing omega(   820) =   1620.99019 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     3.60s
+
+  Computing omega(   840) =   1640.63928 cm-1
+  T matrix converged after avg. # of iterations      1.500
+
+    Total time spent up to now :     3.63s
+
+  Computing omega(   860) =   1660.05580 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.65s
+
+  Computing omega(   880) =   1679.24783 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.67s
+
+  Computing omega(   900) =   1698.22299 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.69s
+
+  Computing omega(   920) =   1716.98845 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.71s
+
+  Computing omega(   940) =   1735.55103 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.73s
+
+  Computing omega(   960) =   1753.91716 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.75s
+
+  Computing omega(   980) =   1772.09295 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.77s
+
+  Computing omega(  1000) =   1790.08421 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.80s
+
+  Computing omega(  1020) =   1807.89643 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.82s
+
+  Computing omega(  1040) =   1825.53486 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.84s
+
+  Computing omega(  1060) =   1843.00449 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.86s
+
+  Computing omega(  1080) =   1860.31008 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.88s
+
+  Computing omega(  1100) =   1877.45615 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.90s
+
+  Computing omega(  1120) =   1894.44705 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.92s
+
+  Computing omega(  1140) =   1911.28692 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.94s
+
+  Computing omega(  1160) =   1927.97969 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     3.96s
+
+  Computing omega(  1180) =   1944.52918 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     3.98s
+
+  Computing omega(  1200) =   1960.93900 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.00s
+
+  Computing omega(  1220) =   1977.21263 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.01s
+
+  Computing omega(  1240) =   1993.35341 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.03s
+
+  Computing omega(  1260) =   2009.36454 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.05s
+
+  Computing omega(  1280) =   2025.24909 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.06s
+
+  Computing omega(  1300) =   2041.01002 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.08s
+
+  Computing omega(  1320) =   2056.65017 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.09s
+
+  Computing omega(  1340) =   2072.17228 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.11s
+
+  Computing omega(  1360) =   2087.57898 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.13s
+
+  Computing omega(  1380) =   2102.87280 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.14s
+
+  Computing omega(  1400) =   2118.05620 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.16s
+
+  Computing omega(  1420) =   2133.13152 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.18s
+
+  Computing omega(  1440) =   2148.10105 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.19s
+
+  Computing omega(  1460) =   2162.96698 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.21s
+
+  Computing omega(  1480) =   2177.73143 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.22s
+
+  Computing omega(  1500) =   2192.39645 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.24s
+
+  Computing omega(  1520) =   2206.96403 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.26s
+
+  Computing omega(  1540) =   2221.43608 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.27s
+
+  Computing omega(  1560) =   2235.81446 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.29s
+
+  Computing omega(  1580) =   2250.10096 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.30s
+
+  Computing omega(  1600) =   2264.29732 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.32s
+
+  Computing omega(  1620) =   2278.40523 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.34s
+
+  Computing omega(  1640) =   2292.42631 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.35s
+
+  Computing omega(  1660) =   2306.36216 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.37s
+
+  Computing omega(  1680) =   2320.21431 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.39s
+
+  Computing omega(  1700) =   2333.98425 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.40s
+
+  Computing omega(  1720) =   2347.67343 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.42s
+
+  Computing omega(  1740) =   2361.28324 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.43s
+
+  Computing omega(  1760) =   2374.81506 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.45s
+
+  Computing omega(  1780) =   2388.27021 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.47s
+
+  Computing omega(  1800) =   2401.64998 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.48s
+
+  Computing omega(  1820) =   2414.95562 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.50s
+
+  Computing omega(  1840) =   2428.18836 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.51s
+
+  Computing omega(  1860) =   2441.34937 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.53s
+
+  Computing omega(  1880) =   2454.43981 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.55s
+
+  Computing omega(  1900) =   2467.46080 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.56s
+
+  Computing omega(  1920) =   2480.41344 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.58s
+
+  Computing omega(  1940) =   2493.29879 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.60s
+
+  Computing omega(  1960) =   2506.11789 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.61s
+
+  Computing omega(  1980) =   2518.87175 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.63s
+
+  Computing omega(  2000) =   2531.56136 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.65s
+
+  Computing omega(  2020) =   2544.18768 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.66s
+
+  Computing omega(  2040) =   2556.75165 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.68s
+
+  Computing omega(  2060) =   2569.25418 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.69s
+
+  Computing omega(  2080) =   2581.69616 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.71s
+
+  Computing omega(  2100) =   2594.07846 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.73s
+
+  Computing omega(  2120) =   2606.40195 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.74s
+
+  Computing omega(  2140) =   2618.66744 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.76s
+
+  Computing omega(  2160) =   2630.87574 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.77s
+
+  Computing omega(  2180) =   2643.02766 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.79s
+
+  Computing omega(  2200) =   2655.12396 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.81s
+
+  Computing omega(  2220) =   2667.16540 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.82s
+
+  Computing omega(  2240) =   2679.15272 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.84s
+
+  Computing omega(  2260) =   2691.08664 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.86s
+
+  Computing omega(  2280) =   2702.96788 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.87s
+
+  Computing omega(  2300) =   2714.79711 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.89s
+
+  Computing omega(  2320) =   2726.57503 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.90s
+
+  Computing omega(  2340) =   2738.30229 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.92s
+
+  Computing omega(  2360) =   2749.97954 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.94s
+
+  Computing omega(  2380) =   2761.60741 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.95s
+
+  Computing omega(  2400) =   2773.18653 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.97s
+
+  Computing omega(  2420) =   2784.71750 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     4.99s
+
+  Computing omega(  2440) =   2796.20092 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.00s
+
+  Computing omega(  2460) =   2807.63737 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.02s
+
+  Computing omega(  2480) =   2819.02743 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.03s
+
+  Computing omega(  2500) =   2830.37165 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.05s
+
+  Computing omega(  2520) =   2841.67058 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.07s
+
+  Computing omega(  2540) =   2852.92477 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.08s
+
+  Computing omega(  2560) =   2864.13473 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.10s
+
+  Computing omega(  2580) =   2875.30099 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.12s
+
+  Computing omega(  2600) =   2886.42405 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.13s
+
+  Computing omega(  2620) =   2897.50442 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.15s
+
+  Computing omega(  2640) =   2908.54257 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.16s
+
+  Computing omega(  2660) =   2919.53899 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.18s
+
+  Computing omega(  2680) =   2930.49414 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.20s
+
+  Computing omega(  2700) =   2941.40850 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.21s
+
+  Computing omega(  2720) =   2952.28251 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.23s
+
+  Computing omega(  2740) =   2963.11661 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.25s
+
+  Computing omega(  2760) =   2973.91124 cm-1
+  T matrix converged after avg. # of iterations      0.500
+
+    Total time spent up to now :     5.26s
+
+  Computing omega(  2780) =   2984.66683 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.28s
+
+  Computing omega(  2800) =   2995.38380 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.30s
+
+  Computing omega(  2820) =   3006.06256 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.32s
+
+  Computing omega(  2840) =   3016.70353 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.34s
+
+  Computing omega(  2860) =   3027.30709 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.37s
+
+  Computing omega(  2880) =   3037.87364 cm-1
+  T matrix converged after avg. # of iterations     10.500
+
+    Total time spent up to now :     5.42s
+
+  Computing omega(  2900) =   3048.40356 cm-1
+  T matrix converged after avg. # of iterations     10.500
+
+    Total time spent up to now :     5.53s
+
+  Computing omega(  2920) =   3058.89723 cm-1
+  T matrix converged after avg. # of iterations     10.000
+
+    Total time spent up to now :     5.63s
+
+  Computing omega(  2940) =   3069.35503 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.68s
+
+  Computing omega(  2960) =   3079.77732 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.70s
+
+  Computing omega(  2980) =   3090.16446 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.72s
+
+  Computing omega(  2999) =   3100.00000 cm-1
+  T matrix converged after avg. # of iterations      1.000
+
+    Total time spent up to now :     5.74s
+
+  ======================================================================
+  =                             Writing data                           =
+  ======================================================================
+Writing conductance to output/conductance.dat
+Writing doscond to output/doscond.dat
+
+<global routines>
+             clock number :    12
+
+           conductor :     0.00s CPU
+       smearing_init :     0.06s CPU
+              cft_1z :     0.00s CPU
+    hamiltonian_init :     0.01s CPU
+         read_matrix :     0.01s CPU (       2 calls,   0.005 s avg)
+         fourier_par :     0.00s CPU (       4 calls,   0.000 s avg)
+        do_conductor :     5.74s CPU
+   hamiltonian_setup :     0.16s CPU (    3000 calls,   0.000 s avg)
+            transfer :     4.34s CPU (    3000 calls,   0.001 s avg)
+               green :     0.54s CPU (    6000 calls,   0.000 s avg)
+         gzero_maker :     0.02s CPU (    3000 calls,   0.000 s avg)
+       transmittance :     0.15s CPU (    3000 calls,   0.000 s avg)
+
+  <MEMORY_USAGE>
+                smearing:           0.480 MB
+                 kpoints:           0.000 MB
+               workspace:           0.295 MB
+
+ Total allocated. Memory:           0.775 MB
+  Real allocated. Memory:          84.430 MB
+  </MEMORY_USAGE>
