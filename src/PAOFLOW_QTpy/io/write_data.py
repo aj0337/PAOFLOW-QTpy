@@ -236,7 +236,9 @@ def write_internal_format_files(
         If False and overlap matrices are provided, overlap blocks will be written to the output.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    ham_file = output_prefix + ".ham"
+    ham_file = (
+        output_prefix if output_prefix.endswith(".ham") else output_prefix + ".ham"
+    )
     Hk = hk_data["Hk"]
     Sk = hk_data.get("S", None)
     ivr = hk_data["ivr"]

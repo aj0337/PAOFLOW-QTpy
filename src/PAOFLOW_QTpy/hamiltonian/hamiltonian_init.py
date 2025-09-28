@@ -54,7 +54,10 @@ def initialize_hamiltonian_blocks(
 
     def with_ham_suffix(path: str) -> str:
         name = Path(path).name
-        return f"{output_dir}/{name}.ham"
+        if not name.endswith(".ham"):
+            return f"{output_dir}/{name}.ham"
+        else:
+            return f"./{name}"
 
     def extract_2D_ivrs(ivr3D: np.ndarray, transport_direction: int) -> np.ndarray:
         if transport_direction == 1:

@@ -25,6 +25,7 @@ from PAOFLOW_QTpy.io.input_parameters import ConductorData, RuntimeData
 from PAOFLOW_QTpy.io.log_module import log_startup
 from PAOFLOW_QTpy.io.summary import print_summary
 from PAOFLOW_QTpy.parsers.atmproj_tools import parse_atomic_proj
+from PAOFLOW_QTpy.parsers.parser_base import read_nr_from_ham
 from PAOFLOW_QTpy.smearing.smearing_T import SmearingData
 from PAOFLOW_QTpy.smearing.smearing_base import smearing_func
 from PAOFLOW_QTpy.utils.memusage import MemoryTracker
@@ -52,10 +53,14 @@ def prepare_conductor(yaml_file: str) -> ConductorData:
     nproc = MPI.COMM_WORLD.Get_size()
 
     log_startup("conductor.py")
-    hk_data = parse_atomic_proj(data)
+    if data.carriers == "electrons":
+        hk_data = parse_atomic_proj(data)
+        nr_full = hk_data["nr"]
+    elif data.carriers == "phonons":
+        nr_full = read_nr_from_ham(data.file_names.datafile_C)
 
     nk_par, nr_par = initialize_meshsize(
-        nr_full=hk_data["nr"], transport_direction=data.transport_direction
+        nr_full=nr_full, transport_direction=data.transport_direction
     )
 
     s_par = data.kpoint_grid.s[:2]
