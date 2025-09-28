@@ -81,7 +81,7 @@ class ConductorCalculator:
             emin=data.energy.emin,
             emax=data.energy.emax,
             ne=data.energy.ne,
-            carriers=self.data.carriers,
+            carriers=data.carriers,
         )
 
     @timed_function("do_conductor")
