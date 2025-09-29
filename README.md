@@ -64,7 +64,7 @@ converged for the sake of fast execution (CAVEAT: this test takes a
 LONG time to run on a workstation). For the testing of the transport
 part, `ext.ham` has been copied from the Fortran `tests` folder.
 
-NOTE2: for accurate phonon calculations on these systems, ecutrho=20\*ecuwfc,
+NOTE2: for accurate phonon calculations on these systems, ecutrho=20\*ecutwfc,
 else instabilities appear in the long wavelength acoustic modes.
 
 # Testing
