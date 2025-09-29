@@ -14,6 +14,8 @@ pip install -e .
 
 # Input flags
 
+All inputs are to be specified in a YAML file.
+
 See [README_conductor.input](README_conductor.input) for details on input flags to compute conductance and DOS.
 
 See [README_current.input](README_current.input) for details on input flags to compute current as a function of bias voltage.
@@ -22,7 +24,7 @@ See [README_current.input](README_current.input) for details on input flags to c
 
 See the [examples](examples) folder for usage examples.
 
-`analysis.ipynb` contains code to plot the results. It compares the results from the Python version with the Fortran version.
+`analysis.ipynb` contains scripts to plot the results. It compares the results from the Python version with the Fortran version.
 
 ## Example01:
 
