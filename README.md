@@ -50,11 +50,12 @@ Demonstrates how to compute phonon transport calculation on a 1-dimensional poly
 
   - q2trans.x < cnhn.q2trans.in
 
-This extracts the matrix of the interatomic force constants,
-and writes it in the format for conductor.x (ext.ham)
+    This extracts the matrix of the interatomic force constants,
+    and writes it in the format for conductor.x (ext.ham)
 
 - compute the phonon transmittance
-  python main.py conductor.yaml > conductor.out
+
+  - python main.py conductor.yaml > conductor.out
 
 NOTE: the input parameters (ecutwfc etc.) or q-grid are somewhat under
 converged for the sake of fast execution (CAVEAT: this test takes a
