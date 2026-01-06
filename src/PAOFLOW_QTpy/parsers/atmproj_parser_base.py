@@ -121,10 +121,6 @@ def parse_kpoints(root: ET.Element, lattice_data: dict) -> dict:
         vkpts = kpts * (2.0 * np.pi / alat)  # bohr^-1
         vkpts_crystal = cartesian_to_crystal(vkpts, bvec)
 
-        print(
-            "kpts:", kpts, "vkpts:", vkpts, "vkpts_crystal:", vkpts_crystal, "wk:", wk
-        )
-
         return {
             "kpts": kpts,
             "wk": wk,
@@ -146,7 +142,7 @@ def parse_kpoints(root: ET.Element, lattice_data: dict) -> dict:
 
     vkpts = kpoints * 2.0 * np.pi / alat
     vkpts_crystal = cartesian_to_crystal(vkpts, bvec)
-    print("kpts:", kpoints, "vkpts:", vkpts, "vkpts_crystal:", vkpts_crystal, "wk:", wk)
+
     return {
         "kpts": kpoints,
         "wk": wk,
