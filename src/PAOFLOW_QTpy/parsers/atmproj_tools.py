@@ -34,14 +34,24 @@ from PAOFLOW_QTpy.utils.timing import timed_function
 
 def validate_proj_files(file_proj: str) -> str:
     """
-    Ensure that both atomic_proj.xml and its companion data-file.xml exist.
-    Returns the path to data-file.xml if found.
+    Ensure atomic_proj.xml companion file exists.
+    Prefer schema if present, else fallback to legacy.
+    Returns the path to the companion file.
     """
     savedir = os.path.dirname(file_proj)
-    file_data = os.path.join(savedir, "data-file.xml")
-    if not os.path.exists(file_data):
-        raise FileNotFoundError(f"Expected data-file.xml at: {file_data}")
-    return file_data
+
+    cand_schema = os.path.join(savedir, "data-file-schema.xml")
+    if os.path.exists(cand_schema):
+        return cand_schema
+
+    cand_legacy = os.path.join(savedir, "data-file.xml")
+    if os.path.exists(cand_legacy):
+        return cand_legacy
+
+    raise FileNotFoundError(
+        f"Expected QE companion file next to {file_proj}: "
+        f"data-file-schema.xml or data-file.xml"
+    )
 
 
 def convert_energy_units(proj_data: AtomicProjData) -> AtomicProjData:
