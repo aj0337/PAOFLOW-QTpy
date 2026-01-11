@@ -11,11 +11,12 @@ input_conductor:
   transport_direction: 3
   delta: 0.0005
   do_orthoovp: true
-  atmproj_sh: 3.5
-  atmproj_thr: 0.9
+  atmproj_sh: 1.8318041318094993
+  atmproj_thr: 0.95
   write_gf: true
   write_lead_sgm: true
   use_sym: false
+  shifting_scheme: 2
 
 hamiltonian_data:
   H00_C:
