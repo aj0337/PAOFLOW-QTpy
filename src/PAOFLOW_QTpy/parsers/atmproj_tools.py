@@ -60,12 +60,12 @@ def convert_energy_units(proj_data: AtomicProjData) -> AtomicProjData:
 
     unit = proj_data.energy_units.lower()
     factors = {
-        "ha": 27.211386018,
-        "hartree": 27.211386018,
-        "au": 27.211386018,
-        "ry": 13.605693009,
-        "ryd": 13.605693009,
-        "rydberg": 13.605693009,
+        "ha": 27.211396132,
+        "hartree": 27.211396132,
+        "au": 27.211396132,
+        "ry": 13.60569193,
+        "ryd": 13.60569193,
+        "rydberg": 13.60569193,
         "ev": 1.0,
         "electronvolt": 1.0,
     }
@@ -314,7 +314,6 @@ def build_hamiltonian_from_proj(
     eig = proj_data.eigvals
     proj = proj_data.proj
     S_raw = proj_data.overlap
-
     nbnd = proj_data.nbnd
     nkpts = proj_data.nkpts
     nspin = proj_data.nspin
@@ -407,7 +406,6 @@ def build_scheme1(
             proj_b = proj_b / np.sqrt(weight)
 
         H += (energy - opts.sh) * np.outer(proj_b, proj_b.conj())
-
         H = 0.5 * (H + H.conj().T)
     return H.T
 
@@ -446,6 +444,7 @@ def build_scheme2(
     IPA = inv(PA)
     H_aux = (E - opts.sh * IPA) @ A.conj().T
     H = A @ H_aux
+
     H = 0.5 * (H + H.conj().T)
     return H.T
 
