@@ -11,6 +11,7 @@ input_conductor:
   transport_direction: 3
   delta: 0.0005
   do_orthoovp: true
+  atmproj_do_norm: true
   atmproj_sh: 1.8318041318094993
   atmproj_thr: 0.95
   write_gf: true
